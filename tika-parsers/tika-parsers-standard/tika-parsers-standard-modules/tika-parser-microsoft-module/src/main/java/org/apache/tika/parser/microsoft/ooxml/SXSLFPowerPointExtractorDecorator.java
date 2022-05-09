@@ -33,7 +33,6 @@ import org.apache.poi.openxml4j.opc.PackageRelationship;
 import org.apache.poi.openxml4j.opc.PackageRelationshipCollection;
 import org.apache.poi.openxml4j.opc.PackagingURIHelper;
 import org.apache.poi.openxml4j.opc.TargetMode;
-import org.apache.poi.xslf.extractor.XSLFPowerPointExtractor;
 import org.apache.poi.xslf.usermodel.XSLFRelation;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
@@ -46,7 +45,6 @@ import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.microsoft.ooxml.xslf.XSLFEventBasedPowerPointExtractor;
 import org.apache.tika.sax.EmbeddedContentHandler;
-import org.apache.tika.sax.OfflineContentHandler;
 import org.apache.tika.sax.XHTMLContentHandler;
 import org.apache.tika.utils.ExceptionUtils;
 import org.apache.tika.utils.XMLReaderUtils;
@@ -96,7 +94,7 @@ public class SXSLFPowerPointExtractorDecorator extends AbstractOOXMLExtractor {
     }
 
     /**
-     * @see XSLFPowerPointExtractor#getText()
+     * @see org.apache.poi.xslf.extractor.XSLFPowerPointExtractor#getText()
      */
     protected void buildXHTML(XHTMLContentHandler xhtml) throws SAXException, IOException {
 
@@ -162,7 +160,7 @@ public class SXSLFPowerPointExtractorDecorator extends AbstractOOXMLExtractor {
             }
             try (InputStream stream = commentAuthorsPart.getInputStream()) {
                 XMLReaderUtils.parseSAX(new CloseShieldInputStream(stream),
-                        new OfflineContentHandler(new XSLFCommentAuthorHandler()), context);
+                        new XSLFCommentAuthorHandler(), context);
 
             } catch (TikaException | SAXException | IOException e) {
                 metadata.add(TikaCoreProperties.TIKA_META_EXCEPTION_WARNING,
@@ -180,9 +178,9 @@ public class SXSLFPowerPointExtractorDecorator extends AbstractOOXMLExtractor {
 //        Map<String, String> hyperlinks = loadHyperlinkRelationships(packagePart);
         xhtml.startElement("div", "class", "slide-content");
         try (InputStream stream = slidePart.getInputStream()) {
-            XMLReaderUtils.parseSAX(new CloseShieldInputStream(stream), new OfflineContentHandler(
+            XMLReaderUtils.parseSAX(new CloseShieldInputStream(stream),
                     new EmbeddedContentHandler(new OOXMLWordAndPowerPointTextHandler(
-                            new OOXMLTikaBodyPartHandler(xhtml), linkedRelationships))), context);
+                            new OOXMLTikaBodyPartHandler(xhtml), linkedRelationships)), context);
 
         } catch (TikaException | IOException e) {
             metadata.add(TikaCoreProperties.TIKA_META_EXCEPTION_WARNING,

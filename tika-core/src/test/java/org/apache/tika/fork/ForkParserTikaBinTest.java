@@ -16,7 +16,7 @@
  */
 package org.apache.tika.fork;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,9 +35,9 @@ import java.util.jar.JarOutputStream;
 
 import com.google.common.reflect.ClassPath;
 import org.apache.commons.io.IOUtils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
@@ -55,7 +55,7 @@ public class ForkParserTikaBinTest extends TikaTest {
     private static Path JAR_DIR;
     private static Path JAR_FILE;
 
-    @BeforeClass
+    @BeforeAll
     public static void bootstrapJar() throws Exception {
         JAR_DIR = Files.createTempDirectory("tika-fork-tikabin-");
         JAR_FILE = JAR_DIR.resolve(JAR_FILE_NAME);
@@ -63,9 +63,8 @@ public class ForkParserTikaBinTest extends TikaTest {
         try (JarOutputStream jarOs = new JarOutputStream(Files.newOutputStream(JAR_FILE))) {
             ClassLoader loader = ForkServer.class.getClassLoader();
             ClassPath classPath = ClassPath.from(loader);
-
             addClasses(jarOs, classPath, ci -> ci.getPackageName().startsWith("org.slf4j"));
-            addClasses(jarOs, classPath, ci -> ci.getPackageName().startsWith("org.apache.log4j"));
+            addClasses(jarOs, classPath, ci -> ci.getPackageName().startsWith("org.apache.logging"));
             addClasses(jarOs, classPath,
                     ci -> ci.getPackageName().startsWith("org.apache.commons.io"));
             //exclude TypeDetectionBenchmark because it is not serializable
@@ -106,7 +105,7 @@ public class ForkParserTikaBinTest extends TikaTest {
     }
 
 
-    @AfterClass
+    @AfterAll
     public static void tearDown() throws Exception {
         Files.delete(JAR_DIR.resolve("TIKA_2653-iou.xml"));
         Files.delete(JAR_FILE);

@@ -16,27 +16,29 @@
  */
 package org.apache.tika.parser.microsoft;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.ContentHandler;
 
 import org.apache.tika.TikaTest;
 import org.apache.tika.config.TikaConfig;
+import org.apache.tika.metadata.DublinCore;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.Office;
-import org.apache.tika.metadata.OfficeOpenXMLCore;
 import org.apache.tika.metadata.OfficeOpenXMLExtended;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.AutoDetectParser;
@@ -109,9 +111,9 @@ public class WordParserTest extends TikaTest {
         xml = getXML("testWORD_3imgs.doc").xml;
 
         // Images 1-3
-        assertTrue("Image not found in:\n" + xml, xml.contains("src=\"embedded:image1.png\""));
-        assertTrue("Image not found in:\n" + xml, xml.contains("src=\"embedded:image2.jpg\""));
-        assertTrue("Image not found in:\n" + xml, xml.contains("src=\"embedded:image3.png\""));
+        assertTrue(xml.contains("src=\"embedded:image1.png\""), "Image not found in:\n" + xml);
+        assertTrue(xml.contains("src=\"embedded:image2.jpg\""), "Image not found in:\n" + xml);
+        assertTrue(xml.contains("src=\"embedded:image3.png\""), "Image not found in:\n" + xml);
 
         // Text too
         assertTrue(xml.contains("<p>The end!"));
@@ -123,7 +125,7 @@ public class WordParserTest extends TikaTest {
         // Make sure bold text arrived as single
         // contiguous string even though Word parser
         // handled this as 3 character runs
-        assertTrue("Bold text wasn't contiguous: " + xml, xml.contains("F<b>oob</b>a<b>r</b>"));
+        assertTrue(xml.contains("F<b>oob</b>a<b>r</b>"), "Bold text wasn't contiguous: " + xml);
 
         // TIKA-692: test document containing multiple
         // character runs within a bold tag:
@@ -132,7 +134,7 @@ public class WordParserTest extends TikaTest {
         // Make sure bold text arrived as single
         // contiguous string even though Word parser
         // handled this as 3 character runs
-        assertTrue("Bold text wasn't contiguous: " + xml, xml.contains("F<b>oob</b>a<b>r</b>"));
+        assertTrue(xml.contains("F<b>oob</b>a<b>r</b>"), "Bold text wasn't contiguous: " + xml);
     }
 
     @Test
@@ -179,7 +181,7 @@ public class WordParserTest extends TikaTest {
             assertEquals("The quick brown fox jumps over the lazy dog",
                     metadata.get(TikaCoreProperties.TITLE));
             assertEquals("Gym class featuring a brown fox and lazy dog",
-                    metadata.get(OfficeOpenXMLCore.SUBJECT));
+                    metadata.get(DublinCore.SUBJECT));
             assertEquals("Nevin Nollop", metadata.get(TikaCoreProperties.CREATOR));
             assertContains("The quick brown fox jumps over the lazy dog", handler.toString());
         }
@@ -268,11 +270,11 @@ public class WordParserTest extends TikaTest {
         }
 
         assertContains("Keyword1 Keyword2", content);
-        assertEquals("Keyword1 Keyword2", metadata.get(TikaCoreProperties.SUBJECT));
 
         assertContains("Subject is here", content);
 
-        assertEquals("Subject is here", metadata.get(OfficeOpenXMLCore.SUBJECT));
+        assertContains("Subject is here", Arrays.asList(metadata.getValues(DublinCore.SUBJECT)));
+        assertContains("Keyword1 Keyword2", Arrays.asList(metadata.getValues(DublinCore.SUBJECT)));
 
         assertContains("Suddenly some Japanese text:", content);
         // Special version of (GHQ)
@@ -337,11 +339,11 @@ public class WordParserTest extends TikaTest {
         assertEquals("1", metadata.get(Office.PAGE_COUNT));
         assertEquals("2", metadata.get(Office.WORD_COUNT));
         assertEquals("My Title", metadata.get(TikaCoreProperties.TITLE));
-        assertEquals("My Keyword", metadata.get(TikaCoreProperties.SUBJECT));
         assertEquals("Normal.dotm", metadata.get(OfficeOpenXMLExtended.TEMPLATE));
         assertEquals("My Comments", metadata.get(TikaCoreProperties.COMMENTS));
         // TODO: Move to OO subject in Tika 2.0
-        assertEquals("My subject", metadata.get(OfficeOpenXMLCore.SUBJECT));
+        assertContains("My subject", Arrays.asList(metadata.getValues(DublinCore.SUBJECT)));
+        assertContains("My Keyword", Arrays.asList(metadata.getValues(DublinCore.SUBJECT)));
         assertEquals("EDF-DIT", metadata.get(OfficeOpenXMLExtended.COMPANY));
         assertEquals("MyStringValue", metadata.get("custom:MyCustomString"));
         assertEquals("2010-12-30T23:00:00Z", metadata.get("custom:MyCustomDate"));
@@ -350,15 +352,17 @@ public class WordParserTest extends TikaTest {
     @Test
     public void testExceptions1() throws Exception {
         XMLResult xml;
-        Level logLevelStart = Logger.getRootLogger().getLevel();
-        Logger.getRootLogger().setLevel(Level.ERROR);
+        LoggerContext ctx = (LoggerContext) LogManager.getContext();
+        LoggerConfig lc = ctx.getConfiguration().getRootLogger();
+        Level originalLevel = lc.getLevel();
+        lc.setLevel(Level.ERROR);
         try {
             xml = getXML("testException1.doc");
             assertContains("total population", xml.xml);
             xml = getXML("testException2.doc");
             assertContains("electric charge", xml.xml);
         } finally {
-            Logger.getRootLogger().setLevel(logLevelStart);
+            lc.setLevel(originalLevel);
         }
     }
 
@@ -420,7 +424,7 @@ public class WordParserTest extends TikaTest {
     }
 
     @Test
-    @Ignore //until we determine whether we can include test docs or not
+    @Disabled //until we determine whether we can include test docs or not
     public void testHyperlinkStringLongNoCloseQuote() throws Exception {
         //TIKA-1512, one cause: no closing quote on really long string
         //test file derived from govdocs1 012152.doc
@@ -429,7 +433,7 @@ public class WordParserTest extends TikaTest {
     }
 
     @Test
-    @Ignore //until we determine whether we can include test docs or not
+    @Disabled //until we determine whether we can include test docs or not
     public void testHyperlinkStringLongCarriageReturn() throws Exception {
         //TIKA-1512, one cause: no closing quote, but carriage return
         //test file derived from govdocs1 040044.doc

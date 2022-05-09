@@ -25,16 +25,17 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.cxf.common.logging.LogUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,7 @@ public class IntegrationTestBase extends TikaTest {
     static final String TEST_HEAVY_HANG_SHORT = "test-documents/mock/heavy_hang_100.xml";
     static final String TEST_STDOUT_STDERR = "test-documents/mock/testStdOutErr.xml";
     static final String TEST_STATIC_STDOUT_STDERR = "test-documents/mock/testStaticStdOutErr.xml";
-    static final String META_PATH = "/rmeta";
+    static final String RMETA_PATH = "/rmeta";
     static final String STATUS_PATH = "/status";
 
     static final long MAX_WAIT_MS = 60000;
@@ -61,8 +62,9 @@ public class IntegrationTestBase extends TikaTest {
     static Path LOG_FILE;
     static Path STREAMS_DIR;
     private SecurityManager existingSecurityManager = null;
+    protected Process process = null;
 
-    @BeforeClass
+    @BeforeAll
     public static void staticSetup() throws Exception {
         LogUtils.setLoggerClass(NullWebClientLogger.class);
         LOG_FILE = Files.createTempFile("tika-server-integration", ".xml");
@@ -72,13 +74,13 @@ public class IntegrationTestBase extends TikaTest {
         STREAMS_DIR = Files.createTempDirectory("tika-server-integration");
     }
 
-    @AfterClass
+    @AfterAll
     public static void staticTearDown() throws Exception {
         Files.delete(LOG_FILE);
         FileUtils.deleteDirectory(STREAMS_DIR.toFile());
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         existingSecurityManager = System.getSecurityManager();
 /*        System.setSecurityManager(new SecurityManager() {
@@ -98,12 +100,19 @@ public class IntegrationTestBase extends TikaTest {
         });*/
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         System.setSecurityManager(existingSecurityManager);
+        if (process != null) {
+            process.destroyForcibly();
+            process.waitFor(30, TimeUnit.SECONDS);
+            if (process.isAlive()) {
+                throw new RuntimeException("process still alive!");
+            }
+        }
     }
 
-    public Process startProcess(String[] extraArgs) throws IOException {
+    public void startProcess(String[] extraArgs) throws IOException {
         String[] base = new String[]{"java", "-cp", System.getProperty("java.class.path"),
                 "org.apache.tika.server.core.TikaServerCli",};
         List<String> args = new ArrayList<>(Arrays.asList(base));
@@ -113,13 +122,18 @@ public class IntegrationTestBase extends TikaTest {
 //        pb.redirectInput(Files.createTempFile(STREAMS_DIR, "tika-stream-out", ".log").toFile());
         //      pb.redirectError(Files.createTempFile(STREAMS_DIR,
         //      "tika-stream-err", ".log").toFile());
-        return pb.start();
+        process = pb.start();
     }
 
     void awaitServerStartup() throws Exception {
+        WebClient client = WebClient.create(endPoint + "/").accept("text/html");
+        awaitServerStartup(client);
+
+    }
+
+    void awaitServerStartup(WebClient client) throws Exception {
         Instant started = Instant.now();
         long elapsed = Duration.between(started, Instant.now()).toMillis();
-        WebClient client = WebClient.create(endPoint + "/").accept("text/html");
         while (elapsed < MAX_WAIT_MS) {
             try {
                 Response response = client.get();

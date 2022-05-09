@@ -16,10 +16,10 @@
  */
 package org.apache.tika.parser.microsoft.rtf;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.InputStream;
@@ -28,7 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.Tika;
 import org.apache.tika.TikaTest;
@@ -36,9 +36,9 @@ import org.apache.tika.config.TikaConfig;
 import org.apache.tika.extractor.ContainerExtractor;
 import org.apache.tika.extractor.ParserContainerExtractor;
 import org.apache.tika.io.TikaInputStream;
+import org.apache.tika.metadata.DublinCore;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.Office;
-import org.apache.tika.metadata.OfficeOpenXMLCore;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.AutoDetectParser;
@@ -76,7 +76,7 @@ public class RTFParserTest extends TikaTest {
         assertContains("\u5ff5", content);
         assertContains("0 ", content);
         assertContains("abc", content);
-        assertFalse("Doubled character \u5E74", content.contains("\u5E74\u5E74"));
+        assertFalse(content.contains("\u5E74\u5E74"), "Doubled character \u5E74");
     }
 
     @Test
@@ -268,7 +268,7 @@ public class RTFParserTest extends TikaTest {
         assertContains("Keyword1 Keyword2", Arrays.asList(metadata.getValues(Office.KEYWORDS)));
 
         assertContains("Subject is here", content);
-        assertEquals("Subject is here", metadata.get(OfficeOpenXMLCore.SUBJECT));
+        assertEquals("Subject is here", metadata.get(DublinCore.SUBJECT));
 
         assertContains("Suddenly some Japanese text:", content);
         // Special version of (GHQ)

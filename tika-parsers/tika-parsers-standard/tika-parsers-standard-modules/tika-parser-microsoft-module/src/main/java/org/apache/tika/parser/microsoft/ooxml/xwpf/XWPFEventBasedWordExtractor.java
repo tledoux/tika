@@ -17,23 +17,21 @@
 
 package org.apache.tika.parser.microsoft.ooxml.xwpf;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.poi.ooxml.POIXMLDocument;
 import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.ooxml.extractor.POIXMLTextExtractor;
-import org.apache.poi.ooxml.util.SAXHelper;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
-import org.apache.poi.openxml4j.opc.PackageAccess;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.PackageRelationship;
 import org.apache.poi.openxml4j.opc.PackageRelationshipCollection;
@@ -42,52 +40,34 @@ import org.apache.poi.xwpf.usermodel.XWPFRelation;
 import org.apache.xmlbeans.XmlException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
 
 import org.apache.tika.exception.RuntimeSAXException;
+import org.apache.tika.exception.TikaException;
 import org.apache.tika.exception.WriteLimitReachedException;
+import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.microsoft.ooxml.OOXMLWordAndPowerPointTextHandler;
 import org.apache.tika.parser.microsoft.ooxml.ParagraphProperties;
 import org.apache.tika.parser.microsoft.ooxml.RunProperties;
 import org.apache.tika.parser.microsoft.ooxml.XWPFListManager;
+import org.apache.tika.utils.XMLReaderUtils;
 
 //TODO: move this into POI?
 
 /**
  * Experimental class that is based on POI's XSSFEventBasedExcelExtractor
  */
-public class XWPFEventBasedWordExtractor extends POIXMLTextExtractor {
+public class XWPFEventBasedWordExtractor implements POIXMLTextExtractor {
 
     private static final Logger LOG = LoggerFactory.getLogger(XWPFEventBasedWordExtractor.class);
 
     private OPCPackage container;
     private POIXMLProperties properties;
 
-    public XWPFEventBasedWordExtractor(String path)
-            throws XmlException, OpenXML4JException, IOException {
-        this(OPCPackage.open(path, PackageAccess.READ));
-    }
-
     public XWPFEventBasedWordExtractor(OPCPackage container)
             throws XmlException, OpenXML4JException, IOException {
-        super((POIXMLDocument) null);
         this.container = container;
         this.properties = new POIXMLProperties(container);
-    }
-
-
-    public static void main(String[] args) throws Exception {
-        if (args.length < 1) {
-            System.err.println("Use:");
-            System.err.println("  XWPFEventBasedWordExtractor <filename.xlsx>");
-            System.exit(1);
-        }
-
-        XWPFEventBasedWordExtractor extractor = new XWPFEventBasedWordExtractor(args[0]);
-        System.out.println(extractor.getText());
-        extractor.close();
     }
 
     public OPCPackage getPackage() {
@@ -104,6 +84,11 @@ public class XWPFEventBasedWordExtractor extends POIXMLTextExtractor {
 
     public POIXMLProperties.CustomProperties getCustomProperties() {
         return this.properties.getCustomProperties();
+    }
+
+    @Override
+    public POIXMLDocument getDocument() {
+        return null;
     }
 
 
@@ -126,6 +111,8 @@ public class XWPFEventBasedWordExtractor extends POIXMLTextExtractor {
                     }
                     //swallow this because we don't actually call it
                     LOG.warn("SAXException handling document part", e);
+                } catch (TikaException e) {
+                    LOG.warn("ParseException handling document part", e);
                 }
             }
         }
@@ -145,6 +132,8 @@ public class XWPFEventBasedWordExtractor extends POIXMLTextExtractor {
                     }
                     //swallow this because we don't actually call it
                     LOG.warn("SAXException handling glossary document part", e);
+                } catch (TikaException e) {
+                    LOG.warn("ParseException handling document part", e);
                 }
             }
         }
@@ -152,9 +141,24 @@ public class XWPFEventBasedWordExtractor extends POIXMLTextExtractor {
         return sb.toString();
     }
 
+    @Override
+    public void setCloseFilesystem(boolean b) {
+
+    }
+
+    @Override
+    public boolean isCloseFilesystem() {
+        return false;
+    }
+
+    @Override
+    public Closeable getFilesystem() {
+        return null;
+    }
+
 
     private void handleDocumentPart(PackagePart documentPart, StringBuilder sb)
-            throws IOException, SAXException {
+            throws IOException, SAXException, TikaException {
         //load the numbering/list manager and styles from the main document part
         XWPFNumbering numbering = loadNumbering(documentPart);
         XWPFListManager xwpfListManager = new XWPFListManager(numbering);
@@ -197,18 +201,13 @@ public class XWPFEventBasedWordExtractor extends POIXMLTextExtractor {
     }
 
     private void handlePart(PackagePart packagePart, XWPFListManager xwpfListManager,
-                            StringBuilder buffer) throws IOException, SAXException {
+                            StringBuilder buffer) throws IOException, SAXException, TikaException {
 
         Map<String, String> hyperlinks = loadHyperlinkRelationships(packagePart);
         try (InputStream stream = packagePart.getInputStream()) {
-            XMLReader reader = SAXHelper.newXMLReader();
-            reader.setContentHandler(
+            XMLReaderUtils.parseSAX(new CloseShieldInputStream(stream),
                     new OOXMLWordAndPowerPointTextHandler(new XWPFToTextContentHandler(buffer),
-                            hyperlinks));
-            reader.parse(new InputSource(new CloseShieldInputStream(stream)));
-
-        } catch (ParserConfigurationException e) {
-            LOG.warn("Can't configure XMLReader", e);
+                    hyperlinks), new ParseContext());
         }
 
     }

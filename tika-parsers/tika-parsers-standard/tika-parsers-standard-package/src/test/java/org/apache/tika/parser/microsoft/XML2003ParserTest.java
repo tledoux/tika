@@ -17,12 +17,12 @@
 
 package org.apache.tika.parser.microsoft;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.TikaTest;
 import org.apache.tika.metadata.Metadata;
@@ -30,6 +30,7 @@ import org.apache.tika.metadata.Office;
 import org.apache.tika.metadata.TikaCoreProperties;
 
 public class XML2003ParserTest extends TikaTest {
+
     @Test
     public void testBasicWord() throws Exception {
         List<Metadata> list = getRecursiveMetadata("testWORD2003.xml");
@@ -41,8 +42,7 @@ public class XML2003ParserTest extends TikaTest {
         assertContains("<meta name=\"meta:character-count-with-spaces\" content=\"256\"", xml);
         //do not allow nested <p> elements
         assertContains(
-                "<p /> <img href=\"02000003.jpg\" /><p /> <p><img href=\"02000004.jpg\" /></p>",
-                xml);
+                "<img href=\"02000003.jpg\" />", xml);
         assertContains("<table><tbody>", xml);
         assertContains("</tbody></table>", xml);
         assertContains("<td><p>R1 c1</p> </td>", xml);

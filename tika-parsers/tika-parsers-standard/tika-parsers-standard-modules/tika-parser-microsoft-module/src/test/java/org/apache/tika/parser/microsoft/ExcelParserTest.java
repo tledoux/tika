@@ -16,17 +16,17 @@
  */
 package org.apache.tika.parser.microsoft;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.InputStream;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 
 import org.apache.poi.util.LocaleUtil;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.ContentHandler;
 
 import org.apache.tika.TikaTest;
@@ -373,8 +373,8 @@ public class ExcelParserTest extends TikaTest {
         }
 
         assertEquals("application/vnd.ms-excel", metadata.get(Metadata.CONTENT_TYPE));
-        assertEquals("", metadata.get(TikaCoreProperties.CREATOR));
-        assertEquals("", metadata.get(TikaCoreProperties.MODIFIER));
+        assertNull(metadata.get(TikaCoreProperties.CREATOR));
+        assertNull(metadata.get(TikaCoreProperties.MODIFIER));
         assertEquals("2011-08-22T13:45:54Z", metadata.get(TikaCoreProperties.MODIFIED));
         assertEquals("2006-09-12T15:06:44Z", metadata.get(TikaCoreProperties.CREATED));
         assertEquals("Microsoft Excel", metadata.get(OfficeOpenXMLExtended.APPLICATION));

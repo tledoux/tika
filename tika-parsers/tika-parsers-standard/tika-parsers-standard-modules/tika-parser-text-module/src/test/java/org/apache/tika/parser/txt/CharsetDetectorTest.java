@@ -16,8 +16,8 @@
  */
 package org.apache.tika.parser.txt;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -26,9 +26,13 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.nio.file.Files;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.TikaTest;
+import org.apache.tika.config.TikaConfig;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.TikaCoreProperties;
+import org.apache.tika.parser.AutoDetectParser;
 
 public class CharsetDetectorTest extends TikaTest {
 
@@ -124,5 +128,18 @@ public class CharsetDetectorTest extends TikaTest {
         //then fill a small part of the buffer with UTF-8
         detector.setText(sb.toString().getBytes("UTF-8"));
         assertEquals("UTF-8", detector.detect().getName());
+    }
+
+    @Test
+    public void testIgnoreCharset() throws Exception {
+        //TIKA-3516, TIKA-3525, TIKA-1236
+        TikaConfig tikaConfig = new TikaConfig(
+                getResourceAsStream("/test-configs/tika-config-ignore-charset.xml"));
+
+        Metadata m = new Metadata();
+
+        m.set(TikaCoreProperties.RESOURCE_NAME_KEY, "texty-text.txt");
+        assertContains("ACTIVE AGE", getXML("testIgnoreCharset.txt",
+                new AutoDetectParser(tikaConfig), m).xml);
     }
 }

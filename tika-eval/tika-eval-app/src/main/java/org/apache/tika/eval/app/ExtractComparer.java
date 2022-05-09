@@ -33,7 +33,6 @@ import org.apache.commons.io.FilenameUtils;
 
 import org.apache.tika.batch.FileResource;
 import org.apache.tika.batch.fs.FSProperties;
-import org.apache.tika.config.TikaConfig;
 import org.apache.tika.eval.app.db.ColInfo;
 import org.apache.tika.eval.app.db.Cols;
 import org.apache.tika.eval.app.db.TableInfo;
@@ -138,7 +137,6 @@ public class ExtractComparer extends AbstractProfiler {
     }
 
     //need to parameterize?
-    private final TikaConfig config = TikaConfig.getDefaultConfig();
     private final Path inputDir;
     private final Path extractsA;
     private final Path extractsB;

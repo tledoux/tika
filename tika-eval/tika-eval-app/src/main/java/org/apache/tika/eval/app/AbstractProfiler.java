@@ -72,10 +72,15 @@ import org.apache.tika.exception.TikaException;
 import org.apache.tika.language.detect.LanguageResult;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.PagedText;
+import org.apache.tika.metadata.Property;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.sax.ToXMLContentHandler;
 
 public abstract class AbstractProfiler extends FileResourceConsumer {
+
+    //Container exception key from the 1.x branch
+    private static final Property CONTAINER_EXCEPTION_1X = Property.externalText("X-TIKA" +
+            ":EXCEPTION:runtime");
 
     public static final String TRUE = Boolean.toString(true);
     public static final String FALSE = Boolean.toString(false);
@@ -116,8 +121,7 @@ public abstract class AbstractProfiler extends FileResourceConsumer {
     int maxContentLength = 10000000;
     int maxContentLengthForLangId = 50000;
     int maxTokens = 200000;
-    //TODO: allow configuration
-    //private TikaConfig config = TikaConfig.getDefaultConfig();
+
     CompositeTextStatsCalculator compositeTextStatsCalculator;
     private String lastExtractExtension = null;
 
@@ -558,6 +562,9 @@ public abstract class AbstractProfiler extends FileResourceConsumer {
     void getExceptionStrings(Metadata metadata, Map<Cols, String> data) {
 
         String fullTrace = metadata.get(TikaCoreProperties.CONTAINER_EXCEPTION);
+        if (fullTrace == null) {
+            fullTrace = metadata.get(CONTAINER_EXCEPTION_1X);
+        }
 
         if (fullTrace == null) {
             fullTrace = metadata.get(TikaCoreProperties.EMBEDDED_EXCEPTION);

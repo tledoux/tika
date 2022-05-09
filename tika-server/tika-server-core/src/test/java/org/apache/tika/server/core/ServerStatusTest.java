@@ -16,8 +16,9 @@
  */
 package org.apache.tika.server.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Map;
 import java.util.Random;
@@ -27,17 +28,21 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 public class ServerStatusTest {
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testBadId() throws Exception {
         ServerStatus status = new ServerStatus("", 0);
-        status.complete(2);
+        assertThrows(IllegalArgumentException.class, () -> {
+            status.complete(2);
+        });
     }
 
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(60000)
     public void testBasicMultiThreading() throws Exception {
         //make sure that synchronization is basically working
         int numThreads = 10;
@@ -80,7 +85,7 @@ public class ServerStatusTest {
             int processed = 0;
             for (int i = 0; i < filesToProcess; i++) {
                 sleepRandom(200);
-                long taskId = serverStatus.start(ServerStatus.TASK.PARSE, null);
+                long taskId = serverStatus.start(ServerStatus.TASK.PARSE, null, 60000);
                 sleepRandom(100);
                 serverStatus.complete(taskId);
                 processed++;

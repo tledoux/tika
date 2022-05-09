@@ -21,20 +21,15 @@
   <parent>
     <artifactId>tika-langdetect</artifactId>
     <groupId>org.apache.tika</groupId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.4.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>tika-langdetect-lingo24</artifactId>
+  <name>Apache Tika Lingo24 langdetect</name>
 
 
   <dependencies>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>tika-core</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-
     <!-- for java 10
       See TIKA-2778 for why we need to do this now.
       May the gods of dependency management fix this in the future.
@@ -48,17 +43,10 @@
       <groupId>org.apache.cxf</groupId>
       <artifactId>cxf-rt-rs-client</artifactId>
       <version>${cxf.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.glassfish.jaxb</groupId>
-          <artifactId>jaxb-runtime</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson.version}</version>
     </dependency>
 
     <!-- Test dependencies -->
@@ -73,13 +61,9 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>tika-langdetect-test-commons</artifactId>
-      <version>${project.version}</version>
-      <scope>test</scope>
-    </dependency>
-
   </dependencies>
 
+  <scm>
+    <tag>2.2.1-rc2</tag>
+  </scm>
 </project>

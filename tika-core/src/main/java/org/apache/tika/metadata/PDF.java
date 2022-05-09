@@ -26,7 +26,6 @@ public interface PDF {
     String PDF_PREFIX = "pdf" + TikaCoreProperties.NAMESPACE_PREFIX_DELIMITER;
     String PDFA_PREFIX = "pdfa" + TikaCoreProperties.NAMESPACE_PREFIX_DELIMITER;
     String PDFAID_PREFIX = "pdfaid" + TikaCoreProperties.NAMESPACE_PREFIX_DELIMITER;
-    String PDF_PREFLIGHT_PREFIX = "pdf-preflight" + TikaCoreProperties.NAMESPACE_PREFIX_DELIMITER;
 
     /**
      * Prefix to be used for properties that record what was stored
@@ -91,7 +90,7 @@ public interface PDF {
 
     /**
      * If xmp is extracted by, e.g. the XMLProfiler, where did it come from?
-     * The document document catalog or a specific page...or?
+     * The document's document catalog or a specific page...or?
      */
     Property XMP_LOCATION = Property.internalText(PDF_PREFIX + "xmpLocation");
 
@@ -102,20 +101,20 @@ public interface PDF {
 
     Property HAS_MARKED_CONTENT = Property.internalBoolean(PDF_PREFIX + "hasMarkedContent");
 
-    Property PREFLIGHT_IS_VALID = Property.internalBoolean(PDF_PREFLIGHT_PREFIX + "isValid");
-    Property PREFLIGHT_PARSE_EXCEPTION =
-            Property.internalText(PDF_PREFLIGHT_PREFIX + "parseException");
-    Property PREFLIGHT_VALIDATION_ERRORS =
-            Property.internalTextBag(PDF_PREFLIGHT_PREFIX + "validationErrors");
-    Property PREFLIGHT_SPECIFICATION =
-            Property.internalText(PDF_PREFLIGHT_PREFIX + "specification");
-    Property PREFLIGHT_TRAILER_COUNT =
-            Property.internalInteger(PDF_PREFLIGHT_PREFIX + "trailerCount");
-    Property PREFLIGHT_XREF_TYPE = Property.internalText(PDF_PREFLIGHT_PREFIX + "xrefType");
-    Property PREFLIGHT_ICC_PROFILE = Property.internalText(PDF_PREFLIGHT_PREFIX + "iccProfile");
-    Property PREFLIGHT_IS_LINEARIZED =
-            Property.internalBoolean(PDF_PREFLIGHT_PREFIX + "isLinearized");
+    /**
+     * Has a collection element in the root.  If true, this is likely a PDF Portfolio.
+     */
+    Property HAS_COLLECTION = Property.internalBoolean(PDF_PREFIX + "hasCollection");
 
-    Property PREFLIGHT_INCREMENTAL_UPDATES =
-            Property.internalBoolean(PDF_PREFLIGHT_PREFIX + "hasIncrementalUpdates");
+    Property EMBEDDED_FILE_DESCRIPTION = Property.externalText(PDF_PREFIX +
+            "embeddedFileDescription");
+
+    /**
+     * If the PDF has an annotation of type 3D
+     */
+    Property HAS_3D = Property.internalBoolean(PDF_PREFIX + "has3D");
+
+    Property ANNOTATION_TYPES = Property.internalTextBag(PDF_PREFIX + "annotationTypes");
+
+    Property ANNOTATION_SUBTYPES = Property.internalTextBag(PDF_PREFIX + "annotationSubtypes");
 }

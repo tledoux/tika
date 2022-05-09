@@ -17,10 +17,10 @@
 package org.apache.tika.parser;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -34,7 +34,7 @@ import java.util.zip.ZipOutputStream;
 import org.gagravarr.tika.FlacParser;
 import org.gagravarr.tika.OpusParser;
 import org.gagravarr.tika.VorbisParser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.ContentHandler;
 
 import org.apache.tika.TikaTest;
@@ -47,6 +47,7 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.metadata.XMPDM;
 import org.apache.tika.mime.MediaType;
+import org.apache.tika.parser.external.CompositeExternalParser;
 import org.apache.tika.sax.BodyContentHandler;
 
 public class AutoDetectParserTest extends TikaTest {
@@ -95,12 +96,12 @@ public class AutoDetectParserTest extends TikaTest {
             ContentHandler handler = new BodyContentHandler();
             new AutoDetectParser(tika).parse(input, handler, metadata);
 
-            assertEquals("Bad content type: " + tp, tp.realType,
-                    metadata.get(Metadata.CONTENT_TYPE));
+            assertEquals(tp.realType, metadata.get(Metadata.CONTENT_TYPE),
+                    "Bad content type: " + tp);
 
             if (tp.expectedContentFragment != null) {
-                assertTrue("Expected content not found: " + tp,
-                        handler.toString().contains(tp.expectedContentFragment));
+                assertTrue(handler.toString().contains(tp.expectedContentFragment),
+                        "Expected content not found: " + tp);
             }
         }
     }
@@ -303,23 +304,23 @@ public class AutoDetectParserTest extends TikaTest {
 
         // Check we can load the parsers, and they claim to do the right things
         VorbisParser vParser = new VorbisParser();
-        assertNotNull("Parser not found for " + mediaTypes[0],
-                vParser.getSupportedTypes(new ParseContext()));
+        assertNotNull(vParser.getSupportedTypes(new ParseContext()),
+                "Parser not found for " + mediaTypes[0]);
 
         FlacParser fParser = new FlacParser();
-        assertNotNull("Parser not found for " + mediaTypes[1],
-                fParser.getSupportedTypes(new ParseContext()));
-        assertNotNull("Parser not found for " + mediaTypes[2],
-                fParser.getSupportedTypes(new ParseContext()));
+        assertNotNull(fParser.getSupportedTypes(new ParseContext()),
+                "Parser not found for " + mediaTypes[1]);
+        assertNotNull(fParser.getSupportedTypes(new ParseContext()),
+                "Parser not found for " + mediaTypes[2]);
 
         OpusParser oParser = new OpusParser();
-        assertNotNull("Parser not found for " + mediaTypes[3],
-                oParser.getSupportedTypes(new ParseContext()));
+        assertNotNull(oParser.getSupportedTypes(new ParseContext()),
+                "Parser not found for " + mediaTypes[3]);
 
         // Check we found the parser
         CompositeParser parser = (CompositeParser) tika.getParser();
         for (MediaType mt : mediaTypes) {
-            assertNotNull("Parser not found for " + mt, parser.getParsers().get(mt));
+            assertNotNull(parser.getParsers().get(mt), "Parser not found for " + mt);
         }
 
         // Have each file parsed, and check
@@ -333,8 +334,8 @@ public class AutoDetectParserTest extends TikaTest {
                 ContentHandler handler = new BodyContentHandler();
                 new AutoDetectParser(tika).parse(input, handler, metadata);
 
-                assertEquals("Incorrect content type for " + file, mediaTypes[i].toString(),
-                        metadata.get(Metadata.CONTENT_TYPE));
+                assertEquals(mediaTypes[i].toString(), metadata.get(Metadata.CONTENT_TYPE),
+                        "Incorrect content type for " + file);
 
                 // Check some of the common metadata
                 // Old style metadata
@@ -394,6 +395,29 @@ public class AutoDetectParserTest extends TikaTest {
             }
             assertEquals(mimes[i], m.get(Metadata.CONTENT_TYPE));
         }
+    }
+
+    @Test
+    public void testExternalParserIsLoaded() {
+        Parser p = find((CompositeParser) AUTO_DETECT_PARSER, CompositeExternalParser.class);
+        assertNotNull(p);
+    }
+
+    //This is not the complete/correct way to look for parsers within another parser
+    //However, it is good enough for this unit test for now.
+    private Parser find(CompositeParser parser, Class clazz) {
+        for (Parser child : parser.getAllComponentParsers()) {
+            if (child.getClass().equals(clazz)) {
+                return child;
+            }
+            if (child instanceof CompositeParser) {
+                Parser p = find((CompositeParser) child, clazz);
+                if (p != null) {
+                    return p;
+                }
+            }
+        }
+        return null;
     }
 
     /**

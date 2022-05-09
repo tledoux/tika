@@ -16,23 +16,26 @@
  */
 package org.apache.tika.parser.ocr;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.TikaTest;
+import org.apache.tika.config.TikaConfig;
 import org.apache.tika.exception.TikaConfigException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.mime.MediaType;
+import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.DefaultParser;
 import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.Parser;
 import org.apache.tika.parser.image.ImageParser;
 import org.apache.tika.parser.pdf.PDFParserConfig;
 import org.apache.tika.sax.BasicContentHandlerFactory;
@@ -64,7 +67,7 @@ public class TesseractOCRParserTest extends TikaTest {
         parseContext.set(TesseractOCRConfig.class, skipOcrConfig);
 
         // No types offered
-        Assert.assertEquals(0, parser.getSupportedTypes(parseContext).size());
+        assertEquals(0, parser.getSupportedTypes(parseContext).size());
 
         // And DefaultParser won't use us
         assertEquals(ImageParser.class, defaultParser.getParsers(parseContext).get(png).getClass());
@@ -75,6 +78,15 @@ public class TesseractOCRParserTest extends TikaTest {
         String resource = "testOCR.pdf";
         String[] nonOCRContains = new String[0];
         testBasicOCR(resource, nonOCRContains, 2);
+    }
+
+    @Disabled("this requires manually moving the default tessdata directory")
+    @Test
+    public void testTessdataConfig() throws Exception {
+        TikaConfig tikaConfig = new TikaConfig(getResourceAsStream("tesseract-config.xml"));
+        Parser p = new AutoDetectParser(tikaConfig);
+        List<Metadata> metadataList = getRecursiveMetadata("testOCR.pdf", p);
+        assertContains("Happy New Year 2003!", metadataList.get(0).get(TikaCoreProperties.TIKA_CONTENT));
     }
 
     @Test
@@ -93,7 +105,7 @@ public class TesseractOCRParserTest extends TikaTest {
 
     @Test
     public void testOCROutputsHOCR() throws Exception {
-        assumeTrue("can run OCR", canRun());
+        assumeTrue(canRun(), "can run OCR");
 
         String resource = "testOCR.pdf";
 
@@ -109,7 +121,7 @@ public class TesseractOCRParserTest extends TikaTest {
 
     @Test
     public void testParserContentTypeOverride() throws Exception {
-        Assume.assumeTrue("can run OCR", canRun());
+        assumeTrue(canRun(), "can run OCR");
         //this tests that the content-type is not overwritten by the ocr parser
         // override content type
         List<Metadata> metadata = getRecursiveMetadata("testOCR.pdf", AUTO_DETECT_PARSER,
@@ -120,7 +132,7 @@ public class TesseractOCRParserTest extends TikaTest {
 
     private void testBasicOCR(String resource, String[] nonOCRContains, int numMetadatas)
             throws Exception {
-        Assume.assumeTrue("can run OCR", canRun());
+        assumeTrue(canRun(), "can run OCR");
 
         String contents = runOCR(resource, nonOCRContains, numMetadatas,
                 BasicContentHandlerFactory.HANDLER_TYPE.TEXT, TesseractOCRConfig.OUTPUT_TYPE.TXT);
@@ -163,12 +175,16 @@ public class TesseractOCRParserTest extends TikaTest {
         //test at least one value
         assertEquals("deflate", metadataList.get(1).get("Compression CompressionTypeName"));
 
+        //make sure that tesseract is showing up in the full set of "parsed bys"
+        assertContains(TesseractOCRParser.class.getName(),
+                Arrays.asList(metadataList.get(0).getValues(TikaCoreProperties.TIKA_PARSED_BY_FULL_SET)));
+
         return contents.toString();
     }
 
     @Test
     public void testSingleImage() throws Exception {
-        Assume.assumeTrue("can run OCR", canRun());
+        assumeTrue(canRun(), "can run OCR");
         String xml = getXML("testOCR.jpg").xml;
         assertContains("OCR Testing", xml);
         //test metadata extraction

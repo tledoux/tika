@@ -40,6 +40,7 @@ import org.xml.sax.SAXException;
 
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.extractor.EmbeddedDocumentUtil;
+import org.apache.tika.metadata.DublinCore;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.Office;
 import org.apache.tika.metadata.OfficeOpenXMLCore;
@@ -948,7 +949,7 @@ final class TextExtractor {
                 } else if (equals("listtemplateid")) {
                     currentList.templateID = param;
                 } else if (equals("levelnfc") || equals("levelnfcn")) {
-                    //sanity check to make sure list information isn't corrupt
+                    //check to make sure list information isn't corrupt
                     if (listTableLevel > -1 && listTableLevel < currentList.numberType.length) {
                         currentList.numberType[listTableLevel] = param;
                     }
@@ -1135,7 +1136,7 @@ final class TextExtractor {
                 } else if (equals("title")) {
                     nextMetaData = TikaCoreProperties.TITLE;
                 } else if (equals("subject")) {
-                    nextMetaData = OfficeOpenXMLCore.SUBJECT;
+                    nextMetaData = DublinCore.SUBJECT;
                 } else if (equals("keywords")) {
                     nextMetaData = Office.KEYWORDS;
                 } else if (equals("category")) {

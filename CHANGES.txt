@@ -1,3 +1,221 @@
+Release 2.4.1 - ???
+
+   * Fixed bug in ordering of Parsers during service loading (TIKA-3750).
+
+   * Users can expand system properties from the forking
+     process into forked tika-server processes (TIKA-3748).
+
+Release 2.4.0 - 04/23/2022
+
+   * NOTE: To save on resources, we no longer include the
+     deeplearning4j dependencies in the tika-dl jar. The dependencies for the
+     tika-dl package must be provided by users.  See:
+     https://github.com/apache/tika/blob/main/tika-parsers/tika-parsers-ml/tika-dl/pom.xml
+     for the dependencies that must be provided at run-time (TIKA-3676).
+
+   * NOTE: Added prefix "dwg-custom:" to DWG custom metadata properties (TIKA-3731).
+
+   * Add initial, BETA-grade TLS encryption option for tika-server;
+     configuration may change in future releases (TIKA-3719).
+
+   * Allow specification of fetcherName and fetchKey via query parameters
+     in request URI in tika-server (TIKA-3714).
+
+   * Add basic parsers for WARC and WACZ in tika-parsers-standard (TIKA-3697).
+
+   * Add MetadataWriteFilter capability to improve memory profile in
+     Metadata objects (TIKA-3695).
+
+   * Allow configurability of the ContentHandlerDecorator used
+     by the AutoDetectParser (TIKA-3723).
+
+   * Allow configurability of the EmbeddedDocumentExtractor used
+     by the AutoDetectParser (TIKA-3711).
+
+   * Add detection for Frictionless Data packages and WACZ (TIKA-3696).
+
+   * Add detection for DGN files with gratitude and credit
+     to Steven Frew's tika-dgn-detector (TIKA-3721).
+
+   * Add parser for metadata from DGN 8 files via Dan Coldrick (TIKA-3721).
+
+   * Add a fetcher and emitter for Azure blob storage (TIKA-3707).
+
+   * Add detection for files encrypted by Microsoft's Rights Management Service
+     (TIKA-3666).
+
+   * Fixed regression in 2.3.0 that led to more embedded filenames
+     than appropriate being written to the content (TIKA-3711).
+
+   * tika-server now clones forking process' environment variables
+     into forked process (TIKA-3715).
+
+   * Add an optional /eval endpoint for tika-eval profile or compare
+     capabilities in tika-server (TIKA-3689).
+
+   * Add a Parsed-By-Full-Set metadata item to record all parsers that processed
+     a file (TIKA-3716).
+
+   * Add metadata filters for Optimaize and OpenNLP language detectors (TIKA-3717).
+
+   * Upgrade to PDFBox 2.0.26 (TIKA-3726).
+
+   * Upgrade deeplearning4j to 1.0.0-M2 (TIKA-3458 and PR#527).
+
+   * Various dependency upgrades, including POI, dl4j, gson, jackson,
+     twelvemonkeys, log4j2 and others (TIKA-3675 and many PRs from dependabot).
+
+   * Switch cipher from ECB to GCM in HttpClientFactory (TIKA-3724).
+
+Release 2.3.0 - 02/02/2022
+
+   * Upgrade to Apache POI 5.2.0. This is the first upgrade to POI
+     5.x and represents a major refactoring. Users may experience
+     significantly more logging (TIKA-3164).
+
+   * Upgrade to log4j2 2.17.1 (TIKA-3638).
+
+   * Improve consistency in reporting package-entry divs across
+     all parsers for embedded files (TIKA-3644). This leads
+     to some more text (embedded file names) in files with
+     many embedded attachments.
+
+   * Improve configuration of maps as params for parsers in
+     TikaConfig (TIKA-3645).
+
+   * Improve identification of iWorks 13 files and add parsing
+     for thumbnails, some metadata and attachments (TIKA-3634).
+     Skip handling of .iwa files, which are not yet supported.
+
+   * Limit the default in-memory processing (maxMainMemoryBytes) in
+     the PDFParser to 512MB as in the 1.x branch (TIKA-3642).
+
+   * Added IDML Parser from 1.x series to 2.x series (TIKA-3188).
+
+   * Extract annotation types and subtypes for PDFs into metadata (TIKA-3653).
+
+   * Add metadata value for PDFs that contain 3D annotations (TIKA-3653).
+
+   * Add parser for Translation Memory eXchange (TMX) files (TIKA-3660).
+
+   * Add Bill of Materials (Maven BOM) for centralized module version management (TIKA-3367).
+
+
+Release 2.2.1 - 12/19/2021
+
+   * Fix multithreading bug for ooxml files (TIKA-3627).
+
+   * Upgrade log4j to 2.17.0 (TIKA-3625).
+
+   * Upgrade to PDFBox 2.0.25 (TIKA-3622)
+
+   * Fix bug that prevented metadata keys in the UnpackerResource
+     in tika-server (TIKA-3624).
+
+   * Upgrade log4j to 2.16.0 (TIKA-3623)
+
+Release 2.2.0 - 12/13/2021
+
+   * Add support for OneNote files downloaded from O365 (TIKA-3446).
+
+   * Fix logic bug in PipesServer that prevented concatenation of
+     content from attachments (TIKA-3609).
+
+   * Improve extraction of embedded files from MSOffice files created
+     by non-Microsoft tools (TIKA-3526).
+
+   * Added back ability to ignore load errors in TikaConfig (TIKA-3575).
+
+   * Make SecureContentHandler and other parameters configurable in
+     AutoDetectParser programmatically and via tika-config.xml (TIKA-3594).
+
+   * Fix default logging in tika-app in batch mode (TIKA-3589).
+
+   * Fix bug that prevented specifying a config with the long
+     --config= option in tika-app in batch mode (TIKA-3589).
+
+   * Fix thread starvation after numerous restarts in
+     PipesClient (TIKA-3588).
+
+   * Fix race condition when starting multiple forked
+     servers on multiple ports (TIKA-3586).
+
+   * Add timeout per task to be configured via headers
+     for tika-server's legacy endpoints /tika and /rmeta.
+     Note that this timeout greater than taskTimeoutMillis (TIKA-3582).
+
+   * Add metadata item for whether or not a PDF has a collection/
+     is a Portfolio PDF (TIKA-3579).
+
+   * Add detection of ESRI Layer files (TIKA-3570).
+
+   * Add detection of JPEG XL, MARC, ICC profiles, NES-ROM file types
+     (TIKA-3562 and TIKA-3563)
+
+   * Remove duplicate "subject" metadata keys that were intended
+     for backwards compatibility within 1.x only (TIKA-3564).
+
+   * Fix Open Office mime types to be subclasses of application/zip
+     and no longer require OPCPackageDetector-last ordering of zip
+     detectors (TIKA-3556).
+
+   * Improve robustness and features of the httpfetcher (TIKA-3543)
+   
+   * Add optional fetch ranges to FetchEmitTuple to allow range fetching from,
+        e.g. http or s3 (TIKA-3542).
+
+   * Exclude dependencies on jsoup and ehcache in ucar grib/cdm (TIKA-3003).
+
+
+Release 2.1.0 - 08/18/2021
+
+   MAJOR CHANGES in 2.1.0:
+
+   * Improved packaging for tika-parsers-extended. Use the tika-parser-scientific-package and
+     tika-parser-sqlite3-package artifacts if you want fat jars with dependencies. (TIKA-3510)
+
+   * Tika app writes UTF-8 when an encoding is not specified; the legacy behavior
+     was UTF-8 on Mac OS, but System default on other OSs (TIKA-3515).
+
+   * Change the default rendering strategy for PDFs from NO_TEXT to ALL (TIKA-3520).
+
+   Other changes:
+
+   * Fixed bug that pointed to the wrong tessdata directory if the user specified
+     a tesseract path but not also a tessdata path (TIKA-3518).
+
+   * Fixed bug in Icu4j's encoding detector where it would return non-standard
+     names for charsets, e.g. IBM424_rtl is now returned as IBM424 (TIKA-3516).
+
+   * Add a simple UrlFetcher in tika-core as a basic alternative
+     to tika-fetcher-http (TIKA-3527).
+
+   * Add tika-pipes support for Google Cloud Storage (TIKA-3524).
+
+   * Fix markup ordering errors in xhtml output for ODT files (TIKA-2242).
+
+   * Fix serialization of embedded docs in OpenSearch emitter
+     and fix embedded documents not being indexed in some use
+     cases in the Solr emitter (TIKA-3490).
+
+   * Add pipesClientId system property to PipesServer so that each
+     forked process can log to its own logger (TIKA-3480).
+
+   * Add DateNormalizingMetadataFilter let users ensure that all dates
+     emitted to Solr/OpenSearch are in UTC. Users can configure which
+     timezone they'd like to use in cases where the file format does
+     not store a timezone (TIKA-3496).
+
+   * Breaking change in the Solr and OpenSearch emitters. To achieve
+     the SKIP or CONCATENATE attachment strategy, modify the
+     parseMode in the pipesiterators or in the FetchEmitTuple (TIKA-3494).
+
+Release 2.0.0 - 07/07/2021
+
+   * Cleanup of fetcher integration with tika-server.
+
+   * Update dependencies.
+
 Release 2.0.0-BETA - 05/19/2021
    
    * Refactor pipes module for resilience
@@ -11,31 +229,42 @@ Release 2.0.0-ALPHA - 01/13/2021
      * OCR is now triggered automatically for PDFs if tesseract
        is on the user's path see (https://cwiki.apache.org/confluence/display/TIKA/TikaOCR#TikaOCR-disable-ocr)
        for how to disable OCR.
+     * We upgraded from log4j to log4j2 in tika-app, tika-server and anywhere else
+       we used to use log4j.
+     * By default, when rendering a page for OCR, the PDFParser does not render glyphs/text.
      * Removed deprecated Metadata keys/properties (TIKA-1974).
+     * Removed deprecated PDFPreflightParser (TIKA-3437).
      * Removed dangerous calls to read an inputstream or convert to bytes
        without specifying a charset
      * Parsers can be configured via tika-config.xml on instantiation.
        We have moved away from configuration via .properties files because
        of confusion among users.  This affects the PDFParser, TesseractOCRParser
        and the StringsParser.
-     * For those parsers that can be configured per parse via a config object
-       passed in through the ParseContext, the config object will only update those fields
-       that the user has modified.  The config object will no longer
-       fully reset all settings to the default settings per parse.
-       This has a more intuitive "update the base/configured settings" with
-       what has been changed in the config object.
-
+     * Changed namespaces of translator implementations (o.a.t.language.translate.impl) to avoid
+       split-package with tika-core
 
    * tika-parsers
      * The parser modules have been broken into three main modules:
         tika-parsers-standard, tika-parsers-extended and tika-parsers-ml.
-        Users may now need to add tika-parsers-extended to tika-app and
+        Users may now need to add tika-parsers-extended's
+        tika-parser-scientific-module or tika-parser-sqlite3-module to tika-app and
         tika-server to include parsers that used to be included by default
-        (for example: envi, gdal, grib, isatab, netcdf).
+        (for example: envi, gdal, grib, isatab, netcdf, sqlite3).
+     * PDFParser -- a) see above on OCR. b) This parser no longer warns if the jpeg2000
+       dependency is not included. Tika now relies on PDFBox to log an error if a jpeg2000
+       image should be processed but can't because the required external dependency is
+       not available.  See https://pdfbox.apache.org/2.0/dependencies.html#jai-image-io
+       for the non-ASF-2.0-compatible jpeg2000 library.
+     * CompressorParser -- users must add the com.github.luben:zstd-jni dependency to
+       the classpath to process zstd files.  This is an optional library that is no longer bundled
+       in tika-parsers-standard-package because it contains native libs.
      * ChmParser was moved to org.apache.tika.parser.microsoft.chm
      * RTFParser was moved to org.apache.tika.parser.microsoft.rtf
+     * We are now using non-shaded versions of xmpcore with namespaces com.adobe.internal.*
+       vs com.adobe.*.
 
    * tika-app
+     * See above on default inclusion of only tika-parsers-standard.
 
    * tika-server
      * tika-server now by default forks a process to isolate the parsing
@@ -44,16 +273,44 @@ Release 2.0.0-ALPHA - 01/13/2021
        will restart on OOM, timeouts, crashes or after parsing a
        large number of files.  When this happens tika-server will restand and not
        receive connections for brief periods.  The less robust, legacy behavior
-       of not forking a process is available with "-noFork"
-
+       of not forking a process is available with "-noFork"=
+     * Most of tika-server's legacy configuration via the commandline has been moved
+       into configuration via a tika-config.xml file.
+     * tika-server's "enableFileUrl" has been removed in favor of a FileSystemFetcher.
      * tika-server's /metadata endpoint requires tika-server-standard to write XMP/rdf output.
        This output is not available in tika-server-core.
+     * In tika-server, for those parsers that can be configured per parse via a config object
+       passed in through the ParseContext, the config object will only update those fields
+       that the user has modified.  The config object will no longer
+       fully reset all settings to the default settings per parse.
+       This has a more intuitive "update the base/configured settings" with
+       what has been changed in the config object.
 
+  * tika-eval
+    * tika-eval's default profile and comparison reports no longer include tag reports.
+      Users can get the report configs that include tags (*-tags.xml):
+      https://github.com/apache/tika/tree/main/tika-eval/tika-eval-app/src/main/resources
 
-Release 1.27 - ??
+Release 1.27 - 06/30/2021
+
+   * Migrate MP4 parsing to Drew Noakes' metadata-extractor (TIKA-3459).
+     To revert to legacy parser turn off NoakesMP4Parser and turn on MP4Parser
+     via tika-config.xml.
+
+   * Prevent rare infinite loop in tika-server's -spawnChild mode
+     when restart fails because of failure to bind to the port (TIKA-3441).
+
+   * Improve likelihood that tesseract will not be orphaned on
+     jvm restart in tika-server (TIKA-3441).
+
+   * Deprecate experimental PDFPreflightParser (TIKA-3437).
+
    * Apply encoding detection to zip entry names via Ryan421 (TIKA-3374).
+
    * Add json output for /tika endpoint in tika-server (TIKA-3352).
-   * Tika's OpenNLPDetector now covers 148 languages and language-script pairs (TIKA-3340).
+
+   * Tika's PDFParser should use the underlying file if one is passed in
+     via a TikaInputStream (TIKA-3350)
 
 Release 1.26 - 03/24/2021
 

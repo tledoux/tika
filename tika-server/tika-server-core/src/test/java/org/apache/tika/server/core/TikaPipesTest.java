@@ -16,10 +16,11 @@
  */
 package org.apache.tika.server.core;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -30,6 +31,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.core.Response;
@@ -41,12 +43,11 @@ import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.jaxrs.lifecycle.ResourceProvider;
 import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import org.apache.tika.config.TikaConfig;
 import org.apache.tika.exception.TikaConfigException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
@@ -72,6 +73,7 @@ public class TikaPipesTest extends CXFTestBase {
     private static Path TMP_DIR;
     private static Path TMP_OUTPUT_DIR;
     private static Path TMP_OUTPUT_FILE;
+    private static Path TIKA_PIPES_LOG4j2_PATH;
     private static Path TMP_NPE_OUTPUT_FILE;
     private static Path TIKA_CONFIG_PATH;
     private static String TIKA_CONFIG_XML;
@@ -82,7 +84,7 @@ public class TikaPipesTest extends CXFTestBase {
 
     private static String[] VALUE_ARRAY = new String[]{"my-value-1", "my-value-2", "my-value-3"};
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpBeforeClass() throws Exception {
         TMP_DIR = Files.createTempDirectory("tika-pipes-test-");
         Path inputDir = TMP_DIR.resolve("input");
@@ -99,7 +101,9 @@ public class TikaPipesTest extends CXFTestBase {
                     inputDir.resolve(mockFile));
         }
         TIKA_CONFIG_PATH = Files.createTempFile(TMP_DIR, "tika-pipes-", ".xml");
-
+        TIKA_PIPES_LOG4j2_PATH = Files.createTempFile(TMP_DIR, "log4j2-", ".xml");
+        Files.copy(TikaPipesTest.class.getResourceAsStream("/log4j2.xml"), TIKA_PIPES_LOG4j2_PATH,
+                StandardCopyOption.REPLACE_EXISTING);
         TIKA_CONFIG_XML =
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + "<properties>" + "<fetchers>" +
                         "<fetcher class=\"org.apache.tika.pipes.fetcher.fs.FileSystemFetcher\">" +
@@ -113,18 +117,22 @@ public class TikaPipesTest extends CXFTestBase {
                         "</emitter>" +
                         "</emitters>" + "<pipes><params><tikaConfig>" +
                 ProcessUtils.escapeCommandLine(TIKA_CONFIG_PATH.toAbsolutePath().toString()) +
-                        "</tikaConfig><numClients>10</numClients><forkedJvmArgs><arg>-Xmx256m" +
-                        "</arg></forkedJvmArgs>" +
+                        "</tikaConfig><numClients>10</numClients>" +
+                        "<forkedJvmArgs>" +
+                        "<arg>-Xmx256m</arg>" +
+                        "<arg>-Dlog4j.configurationFile=file:" +
+                        ProcessUtils.escapeCommandLine(TIKA_PIPES_LOG4j2_PATH.toAbsolutePath().toString()) + "</arg>" +
+                        "</forkedJvmArgs>" +
                         "</params></pipes>" + "</properties>";
         Files.write(TIKA_CONFIG_PATH, TIKA_CONFIG_XML.getBytes(StandardCharsets.UTF_8));
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownAfterClass() throws Exception {
         FileUtils.deleteDirectory(TMP_DIR.toFile());
     }
 
-    @Before
+    @BeforeEach
     public void setUpEachTest() throws Exception {
         if (Files.exists(TMP_OUTPUT_FILE)) {
             Files.delete(TMP_OUTPUT_FILE);
@@ -160,7 +168,7 @@ public class TikaPipesTest extends CXFTestBase {
     }
 
     @Override
-    protected InputStreamFactory getInputStreamFactory(TikaConfig tikaConfig) {
+    protected InputStreamFactory getInputStreamFactory(InputStream tikaConfigInputStream) {
         return new FetcherStreamFactory(FETCHER_MANAGER);
     }
 
@@ -214,7 +222,8 @@ public class TikaPipesTest extends CXFTestBase {
                         new FetchKey("fsf", "hello_world.xml"),
                         new EmitKey("fse", ""),
                         userMetadata,
-                        new HandlerConfig(BasicContentHandlerFactory.HANDLER_TYPE.XML, -1, -1),
+                        new HandlerConfig(BasicContentHandlerFactory.HANDLER_TYPE.XML,
+                                HandlerConfig.PARSE_MODE.RMETA, -1, -1),
                         FetchEmitTuple.ON_PARSE_EXCEPTION.EMIT);
         StringWriter writer = new StringWriter();
         JsonFetchEmitTuple.toJson(t, writer);
@@ -259,12 +268,11 @@ public class TikaPipesTest extends CXFTestBase {
                 StandardCharsets.UTF_8)) {
             jsonResponse = new ObjectMapper().readTree(reader);
         }
-        ;
         String parseException = jsonResponse.get("parse_exception").asText();
         assertNotNull(parseException);
         assertContains("NullPointerException", parseException);
-        assertEquals(true, jsonResponse.get("emitted").asBoolean());
-        List<Metadata> metadataList = null;
+        assertTrue(jsonResponse.get("emitted").asBoolean());
+        List<Metadata> metadataList;
         try (Reader reader = Files
                 .newBufferedReader(TMP_OUTPUT_DIR.resolve("null_pointer.xml.json"))) {
             metadataList = JsonMetadataList.fromJson(reader);
@@ -298,11 +306,10 @@ public class TikaPipesTest extends CXFTestBase {
                 StandardCharsets.UTF_8)) {
             jsonResponse = new ObjectMapper().readTree(reader);
         }
-        ;
         String parseException = jsonResponse.get("parse_exception").asText();
         assertNotNull(parseException);
         assertContains("NullPointerException", parseException);
-        assertEquals(false, jsonResponse.get("emitted").asBoolean());
+        assertFalse(jsonResponse.get("emitted").asBoolean());
         assertFalse(Files.isRegularFile(TMP_NPE_OUTPUT_FILE));
     }
 }

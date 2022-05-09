@@ -16,10 +16,10 @@
  */
 package org.apache.tika.parser.microsoft;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.TikaTest;
 import org.apache.tika.extractor.ContainerExtractor;
@@ -44,7 +44,6 @@ public class POIContainerExtractionTest extends AbstractPOIContainerExtractionTe
     public void testEmbeddedOfficeFiles() throws Exception {
         ContainerExtractor extractor = new ParserContainerExtractor();
         TikaTest.TrackingHandler handler;
-
 
         // Excel with a word doc and a powerpoint doc, both of which have images in them
         // Without recursion, should see both documents + the images

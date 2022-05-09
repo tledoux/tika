@@ -21,11 +21,12 @@
   <parent>
     <artifactId>tika-eval</artifactId>
     <groupId>org.apache.tika</groupId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.4.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>tika-eval-app</artifactId>
+  <name>Apache Tika eval application</name>
 
 
   <dependencies>
@@ -45,6 +46,11 @@
       <version>${log4j2.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <version>${log4j2.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
       <version>${h2.version}</version>
@@ -53,18 +59,7 @@
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
       <version>${poi.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>commons-codec</groupId>
-          <artifactId>commons-codec</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.commons</groupId>
-          <artifactId>commons-compress</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
-
     <dependency>
       <groupId>org.apache.tika</groupId>
       <artifactId>tika-batch</artifactId>
@@ -77,11 +72,6 @@
       <artifactId>tika-core</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -100,21 +90,58 @@
               <createDependencyReducedPom>
                 false
               </createDependencyReducedPom>
-              <!-- figure out why/fix shade including eval-core's uber jar _and_ the dependency jars -->
-              <!-- <filters> -->
+              <artifactSet>
+                <excludes>
+                  <exclude>org.apache.tika:tika-core:jar:</exclude>
+                  <exclude>org.apache.tika:tika-serialization:jar:</exclude>
+                  <exclude>org.apache.tika:tika-langdetect-opennlp:jar:</exclude>
+                  <exclude>commons-io:commons-io:jar:</exclude>
+                  <exclude>commons-codec:commons-codec:jar:</exclude>
+                  <exclude>org.apache.commons:commons-lang3:jar:</exclude>
+                  <exclude>org.apache.commons:commons-math3:jar:</exclude>
+                  <exclude>org.apache.lucene:lucene-core:jar:</exclude>
+                  <exclude>org.apache.lucene:lucene-analyzers-common:jar:</exclude>
+                  <exclude>org.apache.lucene:lucene-analyzers-icu:jar:</exclude>
+                  <exclude>org.ccil.cowan.tagsoup:tagsoup:jar:</exclude>
+                  <exclude>com.ibm.icu:icu4j:jar:</exclude>
+                  <exclude>com.fasterxml.jackson.core:jackson-core:jar:</exclude>
+                  <exclude>com.fasterxml.jackson.core:jackson-databind:jar:</exclude>
+                  <exclude>com.fasterxml.jackson.core:jackson-annotations:jar:</exclude>
+                  <exclude>org.apache.opennlp:opennlp-tools:jar:</exclude>
+                  <exclude>org.slf4j:slf4j-api:jar:</exclude>
+                </excludes>
+              </artifactSet>
               <filters>
                 <filter>
                   <artifact>*:*</artifact>
                   <excludes>
-                    <exclude>META-INF/*</exclude>
+                    <exclude>module-info.class</exclude>
                     <exclude>LICENSE.txt</exclude>
                     <exclude>NOTICE.txt</exclude>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/*.txt</exclude>
+                    <exclude>META-INF/ASL2.0</exclude>
+                    <exclude>META-INF/DEPENDENCIES</exclude>
+                    <exclude>META-INF/LICENSE</exclude>
+                    <exclude>META-INF/NOTICE</exclude>
+                    <exclude>META-INF/README</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>LICENSE.txt</exclude>
+                    <exclude>NOTICE.txt</exclude>
+                    <exclude>CHANGES</exclude>
+                    <exclude>README</exclude>
                   </excludes>
                 </filter>
               </filters>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>org.apache.tika.eval.app.TikaEvalCLI</mainClass>
+                  <manifestEntries>
+                    <Multi-Release>true</Multi-Release>
+                  </manifestEntries>
                 </transformer>
 
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
@@ -203,4 +230,8 @@
       </plugin>
     </plugins>
   </build>
+
+  <scm>
+    <tag>2.2.1-rc2</tag>
+  </scm>
 </project>

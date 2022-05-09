@@ -25,7 +25,7 @@
   <parent>
     <groupId>org.apache.tika</groupId>
     <artifactId>tika-parent</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.4.1-SNAPSHOT</version>
     <relativePath>../tika-parent/pom.xml</relativePath>
   </parent>
 
@@ -57,7 +57,7 @@
     <dependency>
       <groupId>org.osgi</groupId>
       <artifactId>org.osgi.compendium</artifactId>
-      <version>4.0.0</version>
+      <version>5.0.0</version>
       <scope>provided</scope>
       <optional>true</optional>
     </dependency>
@@ -74,17 +74,10 @@
       <version>${guava.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- versions &gt; 0.4.0 require java > 8 -->
     <dependency>
       <groupId>com.martensigwart</groupId>
       <artifactId>fakeload</artifactId>
-      <version>0.4.0</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.code.findbugs</groupId>
-          <artifactId>jsr305</artifactId>
-        </exclusion>
-      </exclusions>
+      <version>${fakeload.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -94,8 +87,21 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <version>${log4j2.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${junit5.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <version>${junit5.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -110,7 +116,7 @@
           <dependency>
             <groupId>com.puppycrawl.tools</groupId>
             <artifactId>checkstyle</artifactId>
-            <version>8.41</version>
+            <version>${puppycrawl.version}</version>
           </dependency>
         </dependencies>
         <executions>
@@ -144,7 +150,9 @@
               org.apache.tika.config.TikaActivator
             </Bundle-Activator>
             <Bundle-ActivationPolicy>lazy</Bundle-ActivationPolicy>
-            <Import-Package>!sun.misc,org.apache.xerces.util;resolution:=optional,*</Import-Package>
+            <Import-Package>!sun.misc,org.apache.xerces.util;resolution:=optional,
+              org.apache.commons.io.*;version="[2,3)",
+              *</Import-Package>
             <Export-Package>
               org.apache.tika.*
             </Export-Package>
@@ -160,6 +168,7 @@
             <exclude>src/test/resources/org/apache/tika/**</exclude>
             <exclude>src/main/resources/org/apache/tika/language/*.ngp</exclude>
             <exclude>src/main/resources/org/apache/tika/detect/*.nnmodel</exclude>
+            <exclude>src/test/resources/test-documents/file-list.txt</exclude>
             <exclude>src/test/resources/test-documents/ang20150420t182050_corr_v1e_img.hdr</exclude>
           </excludes>
         </configuration>
@@ -182,7 +191,7 @@
           </execution>
         </executions>
       </plugin>
-      <!-- no harm, no foul for 2.0.0 :D TODO: turn this back on after the 2.0.0 release
+      <!--
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>clirr-maven-plugin</artifactId>
@@ -194,26 +203,11 @@
               <goal>check</goal>
             </goals>
             <configuration>
-              <excludes>
-                <exlude>org/apache/tika/config/TikaActivator</exlude>
-                <exlude>org/apache/tika/language/LanguageIdentifier</exlude>
-                <exlude>org/apache/tika/language/LanguageProfile</exlude>
-                <exlude>org/apache/tika/language/LanguageProfilerBuilder</exlude>
-                <exlude>org/apache/tika/language/ProfilingHandler</exlude>
-                <exlude>org/apache/tika/language/ProfilingWriter</exlude>
-                <exlude>org/apache/tika/metadata/Property$PropertyType</exlude>
-                <exlude>org/apache/tika/metadata/Property$ValueType</exlude>
-                <exlude>org/apache/tika/metadata/DublinCore</exlude>
-                <exlude>org/apache/tika/metadata/Metadata</exlude>
-                <exlude>org/apache/tika/metadata/MSOffice</exlude>
-                <exlude>org/apache/tika/parser/EmptyParser</exlude>
-                <exclude>org/apache/tika/metadata/TikaMetadataKeys</exclude>
-              </excludes>
               <comparisonArtifacts>
                 <comparisonArtifact>
                   <groupId>org.apache.tika</groupId>
                   <artifactId>tika-core</artifactId>
-                  <version>2.0.0-SNAPSHOT</version>
+                  <version>2.3.0</version>
                   <type>jar</type>
                 </comparisonArtifact>
               </comparisonArtifacts>
@@ -223,7 +217,7 @@
       </plugin> -->
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>2.22.1</version>
+        <version>${maven.failsafe.version}</version>
         <configuration>
           <additionalClasspathElements>
             <additionalClasspathElement>
@@ -260,6 +254,34 @@
       </plugin>
     </plugins>
   </build>
+  <reporting>
+    <plugins>
+      <!-- to run: mvn site - reports go in target/site/findbugs.html -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>findbugs-maven-plugin</artifactId>
+        <version>3.0.5</version>
+        <configuration>
+          <jvmArgs>-Xmx256m</jvmArgs>
+          <timeout>240000</timeout>
+          <effort>max</effort>
+        <failOnError>true</failOnError>
+      </configuration>
+    </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-project-info-reports-plugin</artifactId>
+        <version>3.3.0</version>
+        <reportSets>
+          <reportSet>
+            <reports>
+              <report>index</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+    </plugins>
+  </reporting>
 
   <description>This is the core Apache Tika™ toolkit library from which all other modules inherit functionality. It
     also
@@ -277,4 +299,8 @@
     <system>Jenkins</system>
     <url>https://builds.apache.org/job/Tika-trunk/</url>
   </ciManagement>
+
+  <scm>
+    <tag>2.2.1-rc2</tag>
+  </scm>
 </project>

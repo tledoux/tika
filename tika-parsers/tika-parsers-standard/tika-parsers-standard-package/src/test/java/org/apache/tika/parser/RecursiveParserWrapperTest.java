@@ -16,11 +16,11 @@
  */
 package org.apache.tika.parser;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,7 +31,7 @@ import java.util.Set;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.ClosedInputStream;
 import org.apache.commons.io.input.ProxyInputStream;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.TikaTest;
 import org.apache.tika.config.TikaConfig;
@@ -95,7 +95,7 @@ public class RecursiveParserWrapperTest extends TikaTest {
         RecursiveParserWrapper wrapper = new RecursiveParserWrapper(AUTO_DETECT_PARSER);
         InputStream stream = getResourceAsStream("/test-documents/test_recursive_embedded.docx");
         RecursiveParserWrapperHandler handler = new RecursiveParserWrapperHandler(
-                new BasicContentHandlerFactory(BasicContentHandlerFactory.HANDLER_TYPE.TEXT, 60));
+                new BasicContentHandlerFactory(BasicContentHandlerFactory.HANDLER_TYPE.TEXT, 70));
         wrapper.parse(stream, handler, metadata, context);
         List<Metadata> list = handler.getMetadataList();
 
@@ -255,7 +255,7 @@ public class RecursiveParserWrapperTest extends TikaTest {
         } finally {
             IOUtils.closeQuietly(stream);
         }
-        assertTrue("npe", npe);
+        assertTrue(npe, "npe");
 
         List<Metadata> metadataList = handler.getMetadataList();
         assertEquals(2, metadataList.size());
@@ -318,7 +318,6 @@ public class RecursiveParserWrapperTest extends TikaTest {
         Metadata metadata = new Metadata();
         TikaConfig tikaConfig = null;
         Parser p = null;
-        System.out.println(getResourceAsFile("TIKA-3137-include.xml").getAbsolutePath());
         try (InputStream is = getResourceAsStream("TIKA-3137-include.xml")) {
             tikaConfig = new TikaConfig(is);
             p = new AutoDetectParser(tikaConfig);

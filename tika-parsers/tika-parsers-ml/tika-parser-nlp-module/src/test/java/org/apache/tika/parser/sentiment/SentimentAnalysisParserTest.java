@@ -16,15 +16,15 @@
  */
 package org.apache.tika.parser.sentiment;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.SAXException;
 
 import org.apache.tika.Tika;
@@ -49,7 +49,7 @@ public class SentimentAnalysisParserTest {
         String text = "What a wonderful thought it is that" +
                 " some of the best days of our lives haven't happened yet.";
         ByteArrayInputStream stream =
-                new ByteArrayInputStream(text.getBytes(Charset.defaultCharset()));
+                new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8));
         Metadata md = new Metadata();
         tika.parse(stream, md);
         String sentiment = md.get("Sentiment");
@@ -66,7 +66,7 @@ public class SentimentAnalysisParserTest {
         }
         String text = "Whatever, I need some cooling off time!";
         ByteArrayInputStream stream =
-                new ByteArrayInputStream(text.getBytes(Charset.defaultCharset()));
+                new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8));
         Metadata md = new Metadata();
         tika.parse(stream, md);
         String sentiment = md.get("Sentiment");

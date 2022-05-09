@@ -17,11 +17,12 @@
 package org.apache.tika.parser.microsoft;
 
 import static org.apache.tika.TikaTest.assertContains;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.io.InputStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.ContentHandler;
 
 import org.apache.tika.metadata.Metadata;
@@ -40,7 +41,7 @@ public class VisioParserTest {
             new OfficeParser().parse(input, handler, metadata, new ParseContext());
 
             assertEquals("application/vnd.visio", metadata.get(Metadata.CONTENT_TYPE));
-            assertEquals("", metadata.get(TikaCoreProperties.TITLE));
+            assertNull(metadata.get(TikaCoreProperties.TITLE));
             assertEquals("Hogwarts", metadata.get(TikaCoreProperties.CREATOR));
             String content = handler.toString();
             assertContains("Some random text, on a page", content);

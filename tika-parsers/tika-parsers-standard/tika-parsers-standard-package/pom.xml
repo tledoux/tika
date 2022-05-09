@@ -21,7 +21,7 @@
   <parent>
     <artifactId>tika-parsers-standard</artifactId>
     <groupId>org.apache.tika</groupId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.4.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -38,7 +38,12 @@
       <scope>provided</scope>
       <optional>true</optional>
     </dependency>
-
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>tika-core</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>tika-parser-apple-module</artifactId>
@@ -53,12 +58,6 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>tika-parser-cad-module</artifactId>
       <version>${project.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>commons-codec</groupId>
-          <artifactId>commons-codec</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -101,6 +100,11 @@
       <artifactId>tika-parser-microsoft-module</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <!-- swap in jcl-over-slf4j -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>jcl-over-slf4j</artifactId>
+    </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>tika-parser-miscoffice-module</artifactId>
@@ -134,6 +138,11 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>tika-parser-webarchive-module</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>tika-parser-xml-module</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -163,17 +172,19 @@
 
     <!-- integration test jars -->
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>com.github.luben</groupId>
       <artifactId>zstd-jni</artifactId>
       <version>${zstd.version}</version>
       <scope>test</scope>
     </dependency>
-
+    <!-- For legal reasons (incompatible license), jai-imageio-jpeg2000 is to be used
+    only in the tests and may not be distributed. See also LEGAL-195 -->
+    <dependency>
+      <groupId>com.github.jai-imageio</groupId>
+      <artifactId>jai-imageio-jpeg2000</artifactId>
+      <version>${imageio.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>tika-core</artifactId>
@@ -388,10 +399,18 @@
                     <exclude>NOTICE.txt</exclude>
                     <exclude>CHANGES</exclude>
                     <exclude>README</exclude>
+                    <exclude>META-INF/LICENSE</exclude>
+                    <exclude>META-INF/DEPENDENCIES</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>META-INF/NOTICE</exclude>
                   </excludes>
                 </filter>
               </filters>
               <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <resource>META-INF/LICENSE</resource>
+                  <file>target/classes/META-INF/LICENSE</file>
+                </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
                     <Automatic-Module-Name>org.apache.tika.parsers</Automatic-Module-Name>
@@ -406,6 +425,9 @@
                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                   <resource>META-INF/services/org.apache.tika.parser.Parser</resource>
                 </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/services/org.apache.tika.detect.zip.ZipContainerDetector</resource>
+                </transformer>
               </transformers>
             </configuration>
           </execution>
@@ -415,4 +437,7 @@
     </plugins>
   </build>
 
+  <scm>
+    <tag>2.2.1-rc2</tag>
+  </scm>
 </project>

@@ -17,8 +17,8 @@
 
 package org.apache.tika.server.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ import javax.ws.rs.core.Response;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.server.core.resource.TranslateResource;
 import org.apache.tika.server.core.writer.TarWriter;
@@ -40,7 +40,7 @@ public class TranslateResourceTest extends CXFTestBase {
     private static final String TRANSLATE_ALL_PATH = TRANSLATE_PATH + "/all";
     private static final String TRANSLATE_TXT = "This won't translate";
     private static final String LINGO_PATH =
-            "/org.apache.tika.language.translate.Lingo24Translator";
+            "/org.apache.tika.language.translate.impl.Lingo24Translator";
     private static final String SRCDEST = "/es/en";
     private static final String DEST = "/en";
 
@@ -48,7 +48,8 @@ public class TranslateResourceTest extends CXFTestBase {
     protected void setUpResources(JAXRSServerFactoryBean sf) {
         sf.setResourceClasses(TranslateResource.class);
         sf.setResourceProvider(TranslateResource.class,
-                new SingletonResourceProvider(new TranslateResource(new ServerStatus("", 0))));
+                new SingletonResourceProvider(new TranslateResource(
+                        new ServerStatus("", 0), 60000)));
 
     }
 

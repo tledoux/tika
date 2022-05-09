@@ -16,11 +16,15 @@
  */
 package org.apache.tika.parser.odf;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -30,8 +34,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.ContentHandler;
+import org.xml.sax.helpers.DefaultHandler;
 
 import org.apache.tika.TikaTest;
 import org.apache.tika.exception.EncryptedDocumentException;
@@ -46,6 +51,7 @@ import org.apache.tika.parser.EmptyParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
+import org.apache.tika.utils.XMLReaderUtils;
 
 public class ODFParserTest extends TikaTest {
     /**
@@ -170,7 +176,7 @@ public class ODFParserTest extends TikaTest {
 
             // Note - contents of maths files not currently supported
             String content = handler.toString().trim();
-            assertEquals("", content);
+            assertEquals("", content.trim());
         }
     }
 
@@ -347,8 +353,8 @@ public class ODFParserTest extends TikaTest {
         //not allowed in html: <p> <annotation> <p> this is an annotation </p> </annotation> </p>
         String xml = getXML("testODTStyles3.odt").xml;
         assertContains(
-                "<p><b>WOUTERS Rolf</b><span class=\"annotation\"> Beschermde persoon is " +
-                        "overleden </annotation>",
+                "<p><b>WOUTERS Rolf</b><p class=\"annotation\"> Beschermde persoon is " +
+                        "overleden </p>",
                 xml);
     }
 
@@ -366,47 +372,55 @@ public class ODFParserTest extends TikaTest {
                 "<span>Visit Tika</span></a>", xml);
     }
 
-    @Test(expected = IOException.class)
+    @Test
     public void testInvalidFromStream() throws Exception {
         try (InputStream is = getResourceAsUrl("/test-documents/testODTnotaZipFile.odt")
                 .openStream()) {
             OpenDocumentParser parser = new OpenDocumentParser();
             Metadata metadata = new Metadata();
             ContentHandler handler = new BodyContentHandler();
-            parser.parse(is, handler, metadata, new ParseContext());
+            assertThrows(IOException.class, () -> {
+                parser.parse(is, handler, metadata, new ParseContext());
+            });
         }
     }
 
-    @Test(expected = IOException.class)
+    @Test
     public void testInvalidFromFile() throws Exception {
-        try (TikaInputStream tis = TikaInputStream
+        try (TikaInputStream is = TikaInputStream
                 .get(getResourceAsUrl("/test-documents/testODTnotaZipFile.odt"))) {
             OpenDocumentParser parser = new OpenDocumentParser();
             Metadata metadata = new Metadata();
             ContentHandler handler = new BodyContentHandler();
-            parser.parse(tis, handler, metadata, new ParseContext());
+            assertThrows(IOException.class, () -> {
+                parser.parse(is, handler, metadata, new ParseContext());
+            });
         }
     }
 
-    @Test(expected = EncryptedDocumentException.class)
+    @Test
     public void testEncryptedODTFile() throws Exception {
         //the password to this file is "tika"
         Path p =
                 Paths.get(
                         ODFParserTest.class.getResource(
                                 "/test-documents/testODTEncrypted.odt").toURI());
-        getRecursiveMetadata(p, false);
+        assertThrows(EncryptedDocumentException.class, () -> {
+            getRecursiveMetadata(p, false);
+        });
     }
 
     //this, of course, should throw an EncryptedDocumentException
     //but the file can't be read by Java's ZipInputStream or
     //by commons compress, unless you enable descriptors.
     //https://issues.apache.org/jira/browse/ODFTOOLKIT-402
-    @Test(expected = TikaException.class)
+    @Test
     public void testEncryptedODTStream() throws Exception {
         try (InputStream is = ODFParserTest.class.getResourceAsStream(
                 "/test-documents/testODTEncrypted.odt")) {
-            getRecursiveMetadata(is, false);
+            assertThrows(TikaException.class, () -> {
+                getRecursiveMetadata(is, false);
+            });
         }
     }
 
@@ -446,4 +460,34 @@ public class ODFParserTest extends TikaTest {
             executorService.shutdownNow();
         }
     }
+
+    @Test
+    public void testODTXHTMLIsParseable() throws Exception {
+        //for all OpenDocument files, make sure that the
+        //output from the parse is parseable xhtml
+        int filesTested = 0;
+        for (Path p : getAllTestFiles()) {
+            String fileName = p.getFileName().toString();
+            if (fileName.endsWith(".odt") || fileName.endsWith("odp") || fileName.endsWith("odf") ||
+                    fileName.endsWith(".ods")) {
+
+                XMLResult xmlResult = null;
+                try (InputStream is = TikaInputStream.get(p)) {
+                    xmlResult = getXML(is, AUTO_DETECT_PARSER, new Metadata());
+                } catch (Exception e) {
+                    continue;
+                }
+                try {
+                    //just make sure this doesn't throw any exceptions
+                    XMLReaderUtils.parseSAX(new ByteArrayInputStream(xmlResult.xml.getBytes(StandardCharsets.UTF_8)),
+                            new DefaultHandler(), new ParseContext());
+                    filesTested++;
+                } catch (Exception e) {
+                    fail(p.getFileName().toString(), e);
+                }
+            }
+        }
+        assertTrue(filesTested > 10);
+    }
+
 }

@@ -18,13 +18,11 @@
 package org.apache.tika.server.standard;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.core.Response;
@@ -33,10 +31,10 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
-import org.apache.tika.config.TikaConfig;
+import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.metadata.serialization.JsonMetadataList;
@@ -48,7 +46,7 @@ import org.apache.tika.server.core.resource.RecursiveMetadataResource;
 import org.apache.tika.server.core.writer.MetadataListMessageBodyWriter;
 
 
-@Ignore("turn into actual unit tests -- this relies on network connectivity...bad")
+@Disabled("turn into actual unit tests -- this relies on network connectivity...bad")
 public class FetcherTest extends CXFTestBase {
 
     private static final String META_PATH = "/rmeta";
@@ -76,11 +74,9 @@ public class FetcherTest extends CXFTestBase {
     }
 
     @Override
-    protected InputStreamFactory getInputStreamFactory(TikaConfig tikaConfig) {
-        try {
-            Path configPath = Paths.get(
-                    getClass().getResource("/config/tika-config-url-fetcher.xml").toURI());
-            FetcherManager fetcherManager = FetcherManager.load(configPath);
+    protected InputStreamFactory getInputStreamFactory(InputStream tikaConfigInputStream) {
+        try (TikaInputStream tis = TikaInputStream.get(tikaConfigInputStream)) {
+            FetcherManager fetcherManager = FetcherManager.load(tis.getPath());
             return new FetcherStreamFactory(fetcherManager);
         } catch (Exception e) {
             throw new RuntimeException(e);

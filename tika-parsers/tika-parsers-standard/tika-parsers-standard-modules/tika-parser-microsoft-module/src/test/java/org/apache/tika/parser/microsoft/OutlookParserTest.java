@@ -16,9 +16,9 @@
  */
 package org.apache.tika.parser.microsoft;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -31,7 +31,7 @@ import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamResult;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.ContentHandler;
 
 import org.apache.tika.TikaTest;
@@ -146,6 +146,10 @@ public class OutlookParserTest extends TikaTest {
         assertEquals("application/vnd.ms-outlook", metadata.get(Metadata.CONTENT_TYPE));
         assertEquals("Welcome to Microsoft Office Outlook 2003",
                 metadata.get(TikaCoreProperties.TITLE));
+        assertEquals("Welcome to Microsoft Office Outlook 2003",
+                metadata.get(TikaCoreProperties.SUBJECT));
+        assertEquals("Welcome to Microsoft Office Outlook 2003",
+                metadata.get(TikaCoreProperties.DESCRIPTION));
 
         String content = handler.toString();
         assertContains("Outlook 2003", content);
@@ -269,9 +273,9 @@ public class OutlookParserTest extends TikaTest {
     }
 
     private void testMsgClass(String expected, Metadata metadata) {
-        assertTrue(expected + ", but got: " + metadata.get(Office.MAPI_MESSAGE_CLASS),
-                expected.equalsIgnoreCase(
-                        metadata.get(Office.MAPI_MESSAGE_CLASS).replaceAll("_", "")));
+        assertTrue(expected.equalsIgnoreCase(
+                                metadata.get(Office.MAPI_MESSAGE_CLASS).replaceAll("_", "")),
+                expected + ", but got: " + metadata.get(Office.MAPI_MESSAGE_CLASS));
     }
 
     @Test

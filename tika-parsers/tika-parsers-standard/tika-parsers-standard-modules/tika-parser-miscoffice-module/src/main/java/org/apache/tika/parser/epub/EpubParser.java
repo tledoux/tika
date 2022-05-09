@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.ZipException;
 
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
@@ -60,7 +59,6 @@ import org.apache.tika.parser.Parser;
 import org.apache.tika.parser.xml.DcXMLParser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.apache.tika.sax.EmbeddedContentHandler;
-import org.apache.tika.sax.OfflineContentHandler;
 import org.apache.tika.sax.XHTMLContentHandler;
 import org.apache.tika.utils.ParserUtils;
 import org.apache.tika.utils.XMLReaderUtils;
@@ -182,7 +180,7 @@ public class EpubParser extends AbstractParser {
         ZipFile zipFile = null;
         try {
             zipFile = new ZipFile(tis.getPath().toFile());
-        } catch (ZipException e) {
+        } catch (IOException e) {
             ParserUtils.recordParserFailure(this, e, metadata);
             trySalvage(tis.getPath(), bodyHandler, xhtml, metadata, context);
             return;
@@ -234,7 +232,7 @@ public class EpubParser extends AbstractParser {
 
         ContentOrderScraper contentOrderScraper = new ContentOrderScraper();
         try (InputStream is = zipFile.getInputStream(zae)) {
-            XMLReaderUtils.parseSAX(is, new OfflineContentHandler(contentOrderScraper), context);
+            XMLReaderUtils.parseSAX(is, contentOrderScraper, context);
         }
         //if no content items, false
         if (contentOrderScraper.contentItems.size() == 0) {
@@ -360,7 +358,7 @@ public class EpubParser extends AbstractParser {
         try {
             embeddedDocumentExtractor
                     .parseEmbedded(stream, new EmbeddedContentHandler(xhtml), embeddedMetadata,
-                            false);
+                            true);
 
         } finally {
             IOUtils.closeQuietly(stream);
@@ -390,7 +388,7 @@ public class EpubParser extends AbstractParser {
         if (container != null) {
             RootFinder rootFinder = new RootFinder();
             try (InputStream is = zipFile.getInputStream(container)) {
-                XMLReaderUtils.parseSAX(is, new OfflineContentHandler(rootFinder), context);
+                XMLReaderUtils.parseSAX(is, rootFinder, context);
             }
             return rootFinder.root;
         } else {

@@ -16,14 +16,12 @@
  */
 package org.apache.tika.mime;
 
-// Junit imports
-
 import static java.nio.charset.StandardCharsets.UTF_16BE;
 import static java.nio.charset.StandardCharsets.UTF_16LE;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -31,8 +29,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.Tika;
 import org.apache.tika.config.TikaConfig;
@@ -50,7 +48,7 @@ public class TestMimeTypes {
     private MimeTypes repo;
     private URL u;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         TikaConfig config = TikaConfig.getDefaultConfig();
         repo = config.getMimeRepository();
@@ -434,6 +432,27 @@ public class TestMimeTypes {
     }
 
     @Test
+    public void testJxlDetection() throws Exception {
+        //test file created by: https://github.com/surma/jxl-art/blob/main/LICENSE
+        assertType("image/jxl", "testJXL.jxl");
+        assertTypeByData("image/jxl", "testJXL.jxl");
+        assertTypeByName("image/jxl", "testJXL.jxl");
+
+        //test file contributed by Tyler Thorsted
+        //testJXL_ISOBMFF.jxl
+        assertType("image/jxl", "testJXL_ISOBMFF.jxl");
+        assertTypeByData("image/jxl", "testJXL_ISOBMFF.jxl");
+        assertTypeByName("image/jxl", "testJXL_ISOBMFF.jxl");
+    }
+
+    @Test
+    public void testMARC() throws Exception {
+        assertType("application/marc", "testMARC.mrc");
+        assertTypeByData("application/marc", "testMARC.mrc");
+        assertTypeByName("application/marc", "testMARC.mrc");
+    }
+
+    @Test
     public void testAVIFDetection() throws Exception {
         // The test file is an avif header fragment only, not a complete image.
         assertType("image/avif", "testAVIF.avif");
@@ -625,9 +644,17 @@ public class TestMimeTypes {
         // From name, gets the common parent type
         assertTypeByName("image/vnd.dxf", "x.dxf");
         // With the data, can work out it's the ASCII flavour
-        //TODO lost /r/n need to fix file
-        //assertTypeByData("image/vnd.dxf; format=ascii", "testDXF_ascii.dxf");
+        assertTypeByData("image/vnd.dxf; format=ascii", "testDXF_ascii.dxf");
+        assertTypeByData("image/vnd.dxf; format=ascii", "testDXF_ascii_win_newlines.dxf");
+        assertTypeByData("image/vnd.dxf; format=ascii", "testDXF_ascii_no_header.dxf");
         // TODO Get a sample Binary DXF file and test
+    }
+
+    @Test
+    public void testDGN() throws Exception {
+        assertTypeByName("image/vnd.dgn", "testDGN7.dgn");
+        assertTypeByName("image/vnd.dgn", "testDGN8.dgn");
+        assertTypeByData("image/vnd.dgn; version=7", "testDGN7.dgn");
     }
 
     @Test
@@ -955,6 +982,11 @@ public class TestMimeTypes {
     }
 
     @Test
+    public void testRobots() throws Exception {
+        assertTypeByData("text/x-robots", "testRobots.txt");
+    }
+
+    @Test
     public void testMessageNews() throws Exception {
         assertTypeByData("message/news", "testMessageNews.txt");
     }
@@ -1257,7 +1289,7 @@ public class TestMimeTypes {
     private void assertType(String expected, String filename) throws Exception {
         try (InputStream stream = TikaInputStream
                 .get(TestMimeTypes.class.getResourceAsStream("/test-documents/" + filename))) {
-            assertNotNull("Test file not found: " + filename, stream);
+            assertNotNull(stream, "Test file not found: " + filename);
             Metadata metadata = new Metadata();
             metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, filename);
             assertEquals(expected, repo.detect(stream, metadata).toString());
@@ -1273,7 +1305,7 @@ public class TestMimeTypes {
     private void assertTypeByData(String expected, String filename) throws IOException {
         try (InputStream stream = TikaInputStream
                 .get(TestMimeTypes.class.getResourceAsStream("/test-documents/" + filename))) {
-            assertNotNull("Test file not found: " + filename, stream);
+            assertNotNull(stream, "Test file not found: " + filename);
             Metadata metadata = new Metadata();
             assertEquals(expected, repo.detect(stream, metadata).toString());
         }
@@ -1304,7 +1336,7 @@ public class TestMimeTypes {
     private MediaType getTypeByNameAndData(String filename) throws IOException {
         try (InputStream stream = TikaInputStream
                 .get(TestMimeTypes.class.getResourceAsStream("/test-documents/" + filename))) {
-            assertNotNull("Test document not found: " + filename, stream);
+            assertNotNull(stream, "Test document not found: " + filename);
             Metadata metadata = new Metadata();
             metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, filename);
             return repo.detect(stream, metadata);

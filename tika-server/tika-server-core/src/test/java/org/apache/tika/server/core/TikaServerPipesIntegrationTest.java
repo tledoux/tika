@@ -18,10 +18,9 @@ package org.apache.tika.server.core;
 
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,11 +35,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.FileUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +65,7 @@ public class TikaServerPipesIntegrationTest extends IntegrationTestBase {
             new String[]{"hello_world.xml", "heavy_hang_30000.xml", "fake_oom.xml",
                     "system_exit.xml", "null_pointer.xml"};
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpBeforeClass() throws Exception {
         TMP_DIR = Files.createTempDirectory("tika-emitter-test-");
         Path inputDir = TMP_DIR.resolve("input");
@@ -98,7 +97,8 @@ public class TikaServerPipesIntegrationTest extends IntegrationTestBase {
                 "<pipes><params><tikaConfig>" +
                 ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString()) +
                 "</tikaConfig><numClients>10</numClients><forkedJvmArgs><arg>-Xmx256m" +
-                "</arg></forkedJvmArgs><timeoutMillis>5000</timeoutMillis>" +
+                "</arg>" + //TODO: need to add logging config here
+                "</forkedJvmArgs><timeoutMillis>5000</timeoutMillis>" +
                 "</params></pipes>" + "</properties>";
 
         String tikaConfigXML = xml1 + xml2;
@@ -111,17 +111,17 @@ public class TikaServerPipesIntegrationTest extends IntegrationTestBase {
 
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownAfterClass() throws Exception {
         FileUtils.deleteDirectory(TMP_DIR.toFile());
     }
 
-    @After
+    @AfterEach
     public void tear() throws Exception {
         Thread.sleep(500);
     }
 
-    @Before
+    @BeforeEach
     public void setUpEachTest() throws Exception {
 
         for (String problemFile : FILES) {
@@ -136,83 +136,48 @@ public class TikaServerPipesIntegrationTest extends IntegrationTestBase {
 
     @Test
     public void testBasic() throws Exception {
-        Process p = null;
-        try {
-            p = startProcess(new String[]{"-config",
-                    ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
-            JsonNode node = testOne("hello_world.xml", true);
-            assertEquals("ok", node.get("status").asText());
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail("shouldn't have an exception" + e.getMessage());
-        } finally {
-            if (p != null) {
-                p.destroyForcibly();
-            }
-        }
+        startProcess(new String[]{"-config",
+                ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
+        JsonNode node = testOne("hello_world.xml", true);
+        assertEquals("ok", node.get("status").asText());
+
     }
 
     @Test
     public void testNPEDefault() throws Exception {
 
-        Process p = null;
-        try {
-            p = startProcess(new String[]{"-config",
-                    ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
-            JsonNode node = testOne("null_pointer.xml", true);
-            assertEquals("ok", node.get("status").asText());
-            assertContains("java.lang.NullPointerException", node.get("parse_exception").asText());
-        } catch (Exception e) {
-            fail("shouldn't have an exception" + e.getMessage());
-        } finally {
-            if (p != null) {
-                p.destroyForcibly();
-            }
-        }
+        startProcess(new String[]{"-config",
+                ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
+        JsonNode node = testOne("null_pointer.xml", true);
+        assertEquals("ok", node.get("status").asText());
+        assertContains("java.lang.NullPointerException", node.get("parse_exception").asText());
     }
 
     @Test
     public void testNPESkip() throws Exception {
 
-        Process p = null;
-        try {
-            p = startProcess(new String[]{"-config",
-                    ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
-            JsonNode node =
-                    testOne("null_pointer.xml", false, FetchEmitTuple.ON_PARSE_EXCEPTION.SKIP);
-            assertEquals("ok", node.get("status").asText());
-            assertContains("java.lang.NullPointerException", node.get("parse_exception").asText());
-        } catch (Exception e) {
-            fail("shouldn't have an exception" + e.getMessage());
-        } finally {
-            if (p != null) {
-                p.destroyForcibly();
-            }
-        }
+        startProcess(new String[]{"-config",
+                ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
+        JsonNode node =
+                testOne("null_pointer.xml", false, FetchEmitTuple.ON_PARSE_EXCEPTION.SKIP);
+        assertEquals("ok", node.get("status").asText());
+        assertContains("java.lang.NullPointerException", node.get("parse_exception").asText());
     }
 
     @Test
     public void testSystemExit() throws Exception {
-        Process p = null;
-        try {
-            p = startProcess(new String[]{"-config",
-                    ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
-            JsonNode node = testOne("system_exit.xml", false);
-            assertEquals("parse_error", node.get("status").asText());
-            assertContains("unknown_crash", node.get("parse_error").asText());
-        } finally {
-            if (p != null) {
-                p.destroyForcibly();
-            }
-        }
+        startProcess(new String[]{"-config",
+                ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
+        JsonNode node = testOne("system_exit.xml", false);
+        assertEquals("parse_error", node.get("status").asText());
+        assertContains("unknown_crash", node.get("parse_error").asText());
     }
 
     @Test
     public void testOOM() throws Exception {
 
-        Process p = null;
         try {
-            p = startProcess(new String[]{"-config",
+            startProcess(new String[]{"-config",
                     ProcessUtils.escapeCommandLine(TIKA_CONFIG.toAbsolutePath().toString())});
             JsonNode node = testOne("fake_oom.xml", false);
             assertEquals("parse_error", node.get("status").asText());
@@ -221,27 +186,16 @@ public class TikaServerPipesIntegrationTest extends IntegrationTestBase {
             //depending on timing, there may be a connection exception --
             // TODO add more of a delay to server shutdown to ensure message is sent
             // before shutdown.
-        } finally {
-            if (p != null) {
-                p.destroyForcibly();
-            }
         }
     }
 
     @Test
     public void testTimeout() throws Exception {
-        Process p = null;
-        try {
-            p = startProcess(new String[]{"-config", ProcessUtils.escapeCommandLine(
-                    TIKA_CONFIG_TIMEOUT.toAbsolutePath().toString())});
-            JsonNode node = testOne("heavy_hang_30000.xml", false);
-            assertEquals("parse_error", node.get("status").asText());
-            assertContains("timeout", node.get("parse_error").asText());
-        } finally {
-            if (p != null) {
-                p.destroyForcibly();
-            }
-        }
+        startProcess(new String[]{"-config", ProcessUtils.escapeCommandLine(
+                TIKA_CONFIG_TIMEOUT.toAbsolutePath().toString())});
+        JsonNode node = testOne("heavy_hang_30000.xml", false);
+        assertEquals("parse_error", node.get("status").asText());
+        assertContains("timeout", node.get("parse_error").asText());
     }
 
 

@@ -40,6 +40,8 @@ public class JsonFetchEmitTuple {
     public static final String ID = "id";
     public static final String FETCHER = "fetcher";
     public static final String FETCHKEY = "fetchKey";
+    public static final String FETCH_RANGE_START = "fetchRangeStart";
+    public static final String FETCH_RANGE_END = "fetchRangeEnd";
     public static final String EMITTER = "emitter";
     public static final String EMITKEY = "emitKey";
     public static final String METADATAKEY = "metadata";
@@ -48,6 +50,7 @@ public class JsonFetchEmitTuple {
     private static final String HANDLER_CONFIG_TYPE = "type";
     private static final String HANDLER_CONFIG_WRITE_LIMIT = "writeLimit";
     private static final String HANDLER_CONFIG_MAX_EMBEDDED_RESOURCES = "maxEmbeddedResources";
+    private static final String HANDLER_CONFIG_PARSE_MODE = "parseMode";
 
 
     public static FetchEmitTuple fromJson(Reader reader) throws IOException {
@@ -71,6 +74,9 @@ public class JsonFetchEmitTuple {
         String fetchKey = null;
         String emitterName = null;
         String emitKey = null;
+        long fetchRangeStart = -1l;
+        long fetchRangeEnd = -1l;
+
         FetchEmitTuple.ON_PARSE_EXCEPTION onParseException =
                 FetchEmitTuple.DEFAULT_ON_PARSE_EXCEPTION;
         HandlerConfig handlerConfig = HandlerConfig.DEFAULT_HANDLER_CONFIG;
@@ -107,13 +113,17 @@ public class JsonFetchEmitTuple {
                 }
             } else if (HANDLER_CONFIG.equals(name)) {
                 handlerConfig = getHandlerConfig(jParser);
+            } else if (FETCH_RANGE_START.equals(name)) {
+                fetchRangeStart = getLong(jParser);
+            } else if (FETCH_RANGE_END.equals(name)) {
+                fetchRangeEnd = getLong(jParser);
             }
             token = jParser.nextToken();
         }
         if (id == null) {
             id = fetchKey;
         }
-        return new FetchEmitTuple(id, new FetchKey(fetcherName, fetchKey),
+        return new FetchEmitTuple(id, new FetchKey(fetcherName, fetchKey, fetchRangeStart, fetchRangeEnd),
                 new EmitKey(emitterName, emitKey), metadata, handlerConfig, onParseException);
     }
 
@@ -127,6 +137,7 @@ public class JsonFetchEmitTuple {
                 BasicContentHandlerFactory.HANDLER_TYPE.TEXT;
         int writeLimit = -1;
         int maxEmbeddedResources = -1;
+        HandlerConfig.PARSE_MODE parseMode = HandlerConfig.PARSE_MODE.RMETA;
         String fieldName = jParser.nextFieldName();
         while (fieldName != null) {
             switch (fieldName) {
@@ -141,13 +152,17 @@ public class JsonFetchEmitTuple {
                 case HANDLER_CONFIG_MAX_EMBEDDED_RESOURCES:
                     maxEmbeddedResources = jParser.nextIntValue(-1);
                     break;
+                case HANDLER_CONFIG_PARSE_MODE:
+                    String modeString = jParser.nextTextValue();
+                    parseMode = HandlerConfig.PARSE_MODE.parseMode(modeString);
+                    break;
                 default:
                     throw new IllegalArgumentException("I regret I don't understand '" + fieldName +
                                                        "' in the context of a handler config");
             }
             fieldName = jParser.nextFieldName();
         }
-        return new HandlerConfig(handlerType, writeLimit, maxEmbeddedResources);
+        return new HandlerConfig(handlerType, parseMode, writeLimit, maxEmbeddedResources);
     }
 
     private static String getValue(JsonParser jParser) throws IOException {
@@ -156,6 +171,14 @@ public class JsonFetchEmitTuple {
             throw new IOException("required value string, but see: " + token.name());
         }
         return jParser.getValueAsString();
+    }
+
+    private static long getLong(JsonParser jParser) throws IOException {
+        JsonToken token = jParser.nextToken();
+        if (token != JsonToken.VALUE_NUMBER_INT) {
+            throw new IOException("required value long, but see: " + token.name());
+        }
+        return jParser.getValueAsLong();
     }
 
     public static String toJson(FetchEmitTuple t) throws IOException {
@@ -176,6 +199,10 @@ public class JsonFetchEmitTuple {
         jsonGenerator.writeStringField(ID, t.getId());
         jsonGenerator.writeStringField(FETCHER, t.getFetchKey().getFetcherName());
         jsonGenerator.writeStringField(FETCHKEY, t.getFetchKey().getFetchKey());
+        if (t.getFetchKey().hasRange()) {
+            jsonGenerator.writeNumberField(FETCH_RANGE_START, t.getFetchKey().getRangeStart());
+            jsonGenerator.writeNumberField(FETCH_RANGE_END, t.getFetchKey().getRangeEnd());
+        }
         jsonGenerator.writeStringField(EMITTER, t.getEmitKey().getEmitterName());
         if (!StringUtils.isBlank(t.getEmitKey().getEmitKey())) {
             jsonGenerator.writeStringField(EMITKEY, t.getEmitKey().getEmitKey());
@@ -189,6 +216,8 @@ public class JsonFetchEmitTuple {
             jsonGenerator.writeStartObject();
             jsonGenerator.writeStringField(HANDLER_CONFIG_TYPE,
                     t.getHandlerConfig().getType().name().toLowerCase(Locale.ROOT));
+            jsonGenerator.writeStringField(HANDLER_CONFIG_PARSE_MODE,
+                    t.getHandlerConfig().getParseMode().name().toLowerCase(Locale.ROOT));
             jsonGenerator.writeNumberField(HANDLER_CONFIG_WRITE_LIMIT,
                     t.getHandlerConfig().getWriteLimit());
             jsonGenerator.writeNumberField(HANDLER_CONFIG_MAX_EMBEDDED_RESOURCES,

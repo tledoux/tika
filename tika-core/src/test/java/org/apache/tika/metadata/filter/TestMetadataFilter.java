@@ -17,15 +17,15 @@
 
 package org.apache.tika.metadata.filter;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.config.AbstractTikaConfigTest;
 import org.apache.tika.config.TikaConfig;
@@ -178,5 +178,17 @@ public class TestMetadataFilter extends AbstractTikaConfigTest {
         assertEquals("a-value", metadata.get("b"));
         assertNull(metadata.get("author"));
         assertNull(metadata.get("a"));
+    }
+
+    @Test
+    public void testDateNormalizingFilter() throws Exception {
+        //test that a Date lacking a timezone, if interpreted as Los Angeles, for example,
+        //yields a UTC string that is properly +7 hours.
+        Metadata m = new Metadata();
+        m.set(TikaCoreProperties.CREATED, "2021-07-23T01:02:24");
+        DateNormalizingMetadataFilter filter = new DateNormalizingMetadataFilter();
+        filter.setDefaultTimeZone("America/Los_Angeles");
+        filter.filter(m);
+        assertEquals("2021-07-23T08:02:24Z", m.get(TikaCoreProperties.CREATED));
     }
 }

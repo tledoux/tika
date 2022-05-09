@@ -16,8 +16,9 @@
  */
 package org.apache.tika.pipes.fetcher.http;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,15 +26,31 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.zip.GZIPInputStream;
 
-import org.junit.Ignore;
-import org.junit.Test;
+import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
+import org.apache.tika.TikaTest;
 import org.apache.tika.io.TemporaryResources;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.pipes.fetcher.FetcherManager;
 
-@Ignore("requires network connectivity")
-public class HttpFetcherTest {
+@Disabled("requires network connectivity")
+public class HttpFetcherTest extends TikaTest {
+
+    @Test
+    public void testRedirect() throws Exception {
+        String url = "https://t.co/cvfkWAEIxw?amp=1";
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        Metadata metadata = new Metadata();
+        HttpFetcher httpFetcher =
+                (HttpFetcher) getFetcherManager("tika-config-http.xml")
+                        .getFetcher("http");
+        try (InputStream is = httpFetcher.fetch(url, metadata)) {
+            IOUtils.copy(is, bos);
+        }
+        //debug(metadata);
+    }
 
     @Test
     public void testRange() throws Exception {

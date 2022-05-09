@@ -21,6 +21,8 @@ import static org.apache.tika.config.TikaConfig.mustNotBeEmpty;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -38,6 +40,7 @@ import org.apache.tika.config.Initializable;
 import org.apache.tika.config.InitializableProblemHandler;
 import org.apache.tika.config.Param;
 import org.apache.tika.exception.TikaConfigException;
+import org.apache.tika.io.FilenameUtils;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.pipes.FetchEmitTuple;
 import org.apache.tika.pipes.HandlerConfig;
@@ -53,7 +56,7 @@ public class S3PipesIterator extends PipesIterator implements Initializable {
     private String credentialsProvider;
     private String profile;
     private String bucket;
-
+    private Pattern fileNamePattern = null;
     private AmazonS3 s3Client;
 
     @Field
@@ -85,6 +88,11 @@ public class S3PipesIterator extends PipesIterator implements Initializable {
         this.credentialsProvider = credentialsProvider;
     }
 
+    @Field
+    public void setFileNamePattern(String fileNamePattern) {
+        this.fileNamePattern = Pattern.compile(fileNamePattern);
+    }
+
     /**
      * This initializes the s3 client. Note, we wrap S3's RuntimeExceptions,
      * e.g. AmazonClientException in a TikaConfigException.
@@ -109,7 +117,7 @@ public class S3PipesIterator extends PipesIterator implements Initializable {
             s3Client = AmazonS3ClientBuilder.standard().withRegion(region).withCredentials(provider)
                     .build();
         } catch (AmazonClientException e) {
-            throw new TikaConfigException("can't initialize s3 pipesiterator");
+            throw new TikaConfigException("can't initialize s3 pipesiterator", e);
         }
     }
 
@@ -128,8 +136,14 @@ public class S3PipesIterator extends PipesIterator implements Initializable {
         long start = System.currentTimeMillis();
         int count = 0;
         HandlerConfig handlerConfig = getHandlerConfig();
+        Matcher fileNameMatcher = null;
+        if (fileNamePattern != null) {
+            fileNameMatcher = fileNamePattern.matcher("");
+        }
         for (S3ObjectSummary summary : S3Objects.withPrefix(s3Client, bucket, prefix)) {
-
+            if (fileNameMatcher != null && !accept(fileNameMatcher, summary.getKey())) {
+                continue;
+            }
             long elapsed = System.currentTimeMillis() - start;
             LOGGER.debug("adding ({}) {} in {} ms", count, summary.getKey(), elapsed);
             //TODO -- allow user specified metadata as the "id"?
@@ -141,5 +155,13 @@ public class S3PipesIterator extends PipesIterator implements Initializable {
         }
         long elapsed = System.currentTimeMillis() - start;
         LOGGER.info("finished enqueuing {} files in {} ms", count, elapsed);
+    }
+
+    private boolean accept(Matcher fileNameMatcher, String key) {
+        String fName = FilenameUtils.getName(key);
+        if (fileNameMatcher.reset(fName).find()) {
+            return true;
+        }
+        return false;
     }
 }

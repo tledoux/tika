@@ -54,7 +54,7 @@ public abstract class ConfigBase {
      */
     protected static <T> T buildSingle(String itemName, Class<T> itemClass, InputStream is)
             throws TikaConfigException, IOException {
-        Node properties = null;
+        Element properties = null;
         try {
             properties = XMLReaderUtils.buildDOM(is).getDocumentElement();
         } catch (SAXException e) {
@@ -65,27 +65,46 @@ public abstract class ConfigBase {
         if (!properties.getLocalName().equals("properties")) {
             throw new TikaConfigException("expect properties as root node");
         }
+        return buildSingle(itemName, itemClass, properties, null);
+    }
+
+    /**
+     * Use this to build a single class, where the user specifies the instance class, e.g.
+     * PipesIterator
+     *
+     * @param itemName
+     * @param properties -- the properties element in the config
+     * @throws TikaConfigException
+     * @throws IOException
+     */
+    protected static <T> T buildSingle(String itemName, Class<T> itemClass, Element properties,
+                                       T defaultValue)
+            throws TikaConfigException, IOException {
+
         NodeList children = properties.getChildNodes();
-        T toReturn = null;
+        T toConfigure = null;
         for (int i = 0; i < children.getLength(); i++) {
             Node child = children.item(i);
             if (child.getNodeType() != 1) {
                 continue;
             }
             if (itemName.equals(child.getLocalName())) {
-                if (toReturn != null) {
+                if (toConfigure != null) {
                     throw new TikaConfigException("There can only be one " + itemName +
                             " in a config");
                 }
                 T item = buildClass(child, itemName, itemClass);
                 setParams(item, child, new HashSet<>());
-                toReturn = (T)item;
+                toConfigure = (T)item;
             }
         }
-        if (toReturn == null) {
-            throw new TikaConfigException("could not find " + itemName);
+        if (toConfigure == null) {
+            if (defaultValue == null) {
+                throw new TikaConfigException("could not find " + itemName);
+            }
+            return defaultValue;
         }
-        return toReturn;
+        return toConfigure;
     }
 
 
@@ -166,12 +185,12 @@ public abstract class ConfigBase {
 
     private static <T> T buildClass(Node node, String elementName, Class itemClass)
             throws TikaConfigException {
+        String className = itemClass.getName();
         Node classNameNode = node.getAttributes().getNamedItem("class");
-        if (classNameNode == null) {
-            throw new TikaConfigException(
-                "element " + elementName + " must have a 'class' " + "attribute");
+
+        if (classNameNode != null) {
+            className = classNameNode.getTextContent();
         }
-        String className = classNameNode.getTextContent();
         try {
             Class clazz = Class.forName(className);
             if (!itemClass.isAssignableFrom(clazz)) {
@@ -198,7 +217,33 @@ public abstract class ConfigBase {
             Node child = children.item(i);
             if ("params".equals(child.getLocalName())) {
                 params = child.getChildNodes();
-                break;
+            } else if (child.getNodeType() == 1 && ! child.getLocalName().equals(exceptNodeName)) {
+                String itemName = child.getLocalName();
+                String setter = "set" + itemName.substring(0, 1).toUpperCase(Locale.US) +
+                        itemName.substring(1);
+                Class itemClass = null;
+                Method setterMethod = null;
+                for (Method method : object.getClass().getMethods()) {
+                    if (setter.equals(method.getName())) {
+                        Class<?>[] classes = method.getParameterTypes();
+                        if (classes.length == 1) {
+                            itemClass = classes[0];
+                            setterMethod = method;
+                            break;
+                        }
+                    }
+                }
+                if (itemClass == null) {
+                    throw new TikaConfigException("Couldn't find setter '" +
+                            setter + "' for " + itemName);
+                }
+                Object item = buildClass(child, itemName, itemClass);
+                setParams(itemClass.cast(item), child, new HashSet<>());
+                try {
+                    setterMethod.invoke(object, item);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new TikaConfigException("problem creating " + itemName, e);
+                }
             }
         }
         if (params != null) {
@@ -222,7 +267,7 @@ public abstract class ConfigBase {
                     tryToSet(object, localName, txt);
                 }
 
-                if (localName != null && txt != null) {
+                if (txt != null) {
                     settings.add(localName);
                 }
             }
@@ -372,7 +417,6 @@ public abstract class ConfigBase {
                     } catch (IllegalAccessException | InvocationTargetException e) {
                         throw new TikaConfigException("bad parameter " + setter, e);
                     }
-
                 } else {
                     try {
                         m.invoke(object, value);

@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 
+import org.apache.tika.config.LoadErrorHandler;
 import org.apache.tika.config.ServiceLoader;
 import org.apache.tika.io.LookaheadInputStream;
 import org.apache.tika.metadata.Metadata;
@@ -41,19 +42,20 @@ public class StreamingZipContainerDetector extends DefaultZipContainerDetector {
      */
     private static final long serialVersionUID = 2891763938430295453L;
 
-    List<ZipContainerDetector> zipDetectors;
 
     public StreamingZipContainerDetector() {
-        this(new ServiceLoader(StreamingZipContainerDetector.class.getClassLoader()));
+        this(new ServiceLoader(StreamingZipContainerDetector.class.getClassLoader(),
+                LoadErrorHandler.WARN, false));
     }
 
     public StreamingZipContainerDetector(ServiceLoader loader) {
-        this(loader.loadServiceProviders(ZipContainerDetector.class));
+        super(loader);
     }
 
     public StreamingZipContainerDetector(List<ZipContainerDetector> zipDetectors) {
-        //TODO: OPCBased needs to be last!!!
-        this.zipDetectors = zipDetectors;
+        //in initial development, OPCBased needed to be last.
+        //this should have been fixed.
+        super(zipDetectors);
     }
 
 

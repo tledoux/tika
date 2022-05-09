@@ -16,15 +16,15 @@
  */
 package org.apache.tika.sax;
 
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.StringReader;
 import java.net.ConnectException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.InputSource;
 import org.xml.sax.helpers.DefaultHandler;
 
@@ -37,7 +37,7 @@ public class OfflineContentHandlerTest {
 
     private DefaultHandler offline;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         parser = SAXParserFactory.newInstance().newSAXParser();
         offline = new OfflineContentHandler(new DefaultHandler());
@@ -64,5 +64,6 @@ public class OfflineContentHandlerTest {
             fail("Parser tried to access the external DTD:" + e);
         }
     }
+
 
 }

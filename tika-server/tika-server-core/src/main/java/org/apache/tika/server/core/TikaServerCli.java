@@ -55,7 +55,7 @@ public class TikaServerCli {
 
         options.addOption("i", "id", true,
                 "id to use for server in" + " the server status endpoint and logging");
-        options.addOption("noFork", false, "runs in legacy 1.x mode -- " +
+        options.addOption("noFork", "noFork", false, "runs in legacy 1.x mode -- " +
                 "server runs in process and is not safely isolated in a forked process");
 
         return options;
@@ -65,7 +65,6 @@ public class TikaServerCli {
         try {
             execute(args);
         } catch (Exception e) {
-            e.printStackTrace();
             LOG.error("Can't start: ", e);
             System.exit(-1);
         }
@@ -87,8 +86,8 @@ public class TikaServerCli {
             try {
                 mainLoop(tikaServerConfig);
             } catch (InterruptedException e) {
-                e.printStackTrace();
                 //swallow
+                LOG.debug("interrupted", e);
             }
         }
     }
@@ -142,7 +141,7 @@ public class TikaServerCli {
     public static void noFork(TikaServerConfig tikaServerConfig) throws Exception {
         List<String> args = tikaServerConfig
                 .getForkedProcessArgs(tikaServerConfig.getPort(), tikaServerConfig.getIdBase());
-        args.add("-noFork");
+        args.add("--noFork");
         TikaServerProcess.main(args.toArray(new String[0]));
     }
 

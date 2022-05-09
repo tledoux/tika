@@ -19,12 +19,16 @@ package org.apache.tika.server.core;
 import java.io.IOException;
 import java.io.InputStream;
 import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.UriInfo;
 
 import org.apache.commons.lang3.StringUtils;
 
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.pipes.fetcher.Fetcher;
 import org.apache.tika.pipes.fetcher.FetcherManager;
+import org.apache.tika.pipes.fetcher.RangeFetcher;
 
 /**
  * This class looks for &quot;fileUrl&quot; in the http header.  If it is not null
@@ -50,22 +54,74 @@ public class FetcherStreamFactory implements InputStreamFactory {
     }
 
     @Override
-    public InputStream getInputSteam(InputStream is, Metadata metadata, HttpHeaders httpHeaders)
-            throws IOException {
-        String fetcherName = httpHeaders.getHeaderString("fetcherName");
-        String fetchKey = httpHeaders.getHeaderString("fetchKey");
+    public InputStream getInputStream(InputStream is, Metadata metadata, HttpHeaders httpHeaders,
+                                      UriInfo uriInfo) throws IOException {
+        MultivaluedMap params = (uriInfo == null) ? null : uriInfo.getQueryParameters();
+        String fetcherName = getParam("fetcherName", httpHeaders, params);
+        String fetchKey = getParam("fetchKey", httpHeaders, params);
+        long fetchRangeStart = getLong(getParam("fetchRangeStart", httpHeaders, params));
+        long fetchRangeEnd = getLong(getParam("fetchRangeEnd", httpHeaders, params));
         if (StringUtils.isBlank(fetcherName) != StringUtils.isBlank(fetchKey)) {
             throw new IOException("Must specify both a 'fetcherName' and a 'fetchKey'. I see: " +
                     " fetcherName:" + fetcherName + " and fetchKey:" + fetchKey);
         }
+        if (fetchRangeStart < 0 && fetchRangeEnd > -1) {
+            throw new IllegalArgumentException("fetchRangeStart must be > -1 if a fetchRangeEnd " +
+                    "is specified");
+        }
+
+        if (fetchRangeStart > -1 && fetchRangeEnd < 0) {
+            throw new IllegalArgumentException("fetchRangeEnd must be > -1 if a fetchRangeStart " +
+                    "is specified");
+        }
 
         if (!StringUtils.isBlank(fetcherName)) {
             try {
-                return fetcherManager.getFetcher(fetcherName).fetch(fetchKey, metadata);
+                Fetcher fetcher = fetcherManager.getFetcher(fetcherName);
+                if (fetchRangeStart > -1 && fetchRangeEnd > -1) {
+                    if (!(fetcher instanceof RangeFetcher)) {
+                        throw new IllegalArgumentException(
+                                "Requesting a range fetch from a fetcher " +
+                                        "that doesn't support range fetching?!");
+                    }
+                    return ((RangeFetcher) fetcher).fetch(fetchKey, fetchRangeStart, fetchRangeEnd,
+                            metadata);
+                } else {
+                    return fetcher.fetch(fetchKey, metadata);
+                }
             } catch (TikaException e) {
                 throw new IOException(e);
             }
         }
         return is;
+    }
+
+    private String getParam(String paramName, HttpHeaders httpHeaders, MultivaluedMap uriParams) {
+        if (uriParams == null || ! uriParams.containsKey(paramName)) {
+            return httpHeaders.getHeaderString(paramName);
+        }
+
+        return (String)uriParams.getFirst(paramName);
+    }
+
+    @Override
+    public InputStream getInputStream(InputStream is, Metadata metadata, HttpHeaders httpHeaders)
+            throws IOException {
+        return getInputStream(is, metadata, httpHeaders, null);
+
+    }
+
+    /**
+     * Tries to parse a long out of the value.  If the val is blank, it returns -1.
+     * Throws {@link NumberFormatException}
+     *
+     * @param val
+     * @return
+     */
+    private static long getLong(String val) {
+        if (StringUtils.isBlank(val)) {
+            return -1;
+        }
+        return Long.parseLong(val);
     }
 }

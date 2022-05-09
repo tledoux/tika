@@ -30,6 +30,7 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.LBHttpSolrClient;
 import org.apache.solr.client.solrj.request.UpdateRequest;
+import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrInputDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,7 @@ import org.apache.tika.pipes.emitter.TikaEmitterException;
 
 public class SolrEmitter extends AbstractEmitter implements Initializable {
 
+    public static String DEFAULT_EMBEDDED_FILE_FIELD_NAME = "embedded";
     private static final Logger LOG = LoggerFactory.getLogger(SolrEmitter.class);
     private final HttpClientFactory httpClientFactory;
     private AttachmentStrategy attachmentStrategy = AttachmentStrategy.PARENT_CHILD;
@@ -59,12 +61,13 @@ public class SolrEmitter extends AbstractEmitter implements Initializable {
     private List<String> solrUrls;
     private List<String> solrZkHosts;
     private String solrZkChroot;
-    private String contentField = "content";
     private String idField = "id";
     private int commitWithin = 1000;
     private int connectionTimeout = 10000;
     private int socketTimeout = 60000;
     private SolrClient solrClient;
+    private String embeddedFileFieldName = DEFAULT_EMBEDDED_FILE_FIELD_NAME;
+
     public SolrEmitter() throws TikaConfigException {
         httpClientFactory = new HttpClientFactory();
     }
@@ -91,33 +94,37 @@ public class SolrEmitter extends AbstractEmitter implements Initializable {
         } else if (updateStrategy == UpdateStrategy.UPDATE_MUST_NOT_EXIST) {
             solrInputDocument.setField("_version_", -1);
         }
-        if (attachmentStrategy == AttachmentStrategy.SKIP || metadataList.size() == 1) {
+        if (metadataList.size() == 1) {
             addMetadataToSolrInputDocument(metadataList.get(0), solrInputDocument, updateStrategy);
-        } else if (attachmentStrategy == AttachmentStrategy.CONCATENATE_CONTENT) {
-            //this only handles text for now, not xhtml
-            StringBuilder sb = new StringBuilder();
-            for (Metadata metadata : metadataList) {
-                String content = metadata.get(getContentField());
-                if (content != null) {
-                    sb.append(content).append("\n");
-                }
-            }
-            Metadata parent = metadataList.get(0);
-            parent.set(getContentField(), sb.toString());
-            addMetadataToSolrInputDocument(parent, solrInputDocument, updateStrategy);
+            docsToUpdate.add(solrInputDocument);
         } else if (attachmentStrategy == AttachmentStrategy.PARENT_CHILD) {
             addMetadataToSolrInputDocument(metadataList.get(0), solrInputDocument, updateStrategy);
+            List<SolrInputDocument> children = new ArrayList<>();
             for (int i = 1; i < metadataList.size(); i++) {
                 SolrInputDocument childSolrInputDocument = new SolrInputDocument();
                 Metadata m = metadataList.get(i);
-                childSolrInputDocument.setField(idField, UUID.randomUUID().toString());
+                childSolrInputDocument
+                        .setField(idField, emitKey + "-" + UUID.randomUUID().toString());
                 addMetadataToSolrInputDocument(m, childSolrInputDocument, updateStrategy);
+                children.add(childSolrInputDocument);
+            }
+            solrInputDocument.setField(embeddedFileFieldName, children);
+            docsToUpdate.add(solrInputDocument);
+        } else if (attachmentStrategy == AttachmentStrategy.SEPARATE_DOCUMENTS) {
+            addMetadataToSolrInputDocument(metadataList.get(0), solrInputDocument, updateStrategy);
+            docsToUpdate.add(solrInputDocument);
+            for (int i = 1; i < metadataList.size(); i++) {
+                SolrInputDocument childSolrInputDocument = new SolrInputDocument();
+                Metadata m = metadataList.get(i);
+                childSolrInputDocument.setField(idField,
+                        solrInputDocument.get(idField).getValue() + "-" + UUID.randomUUID().toString());
+                addMetadataToSolrInputDocument(m, childSolrInputDocument, updateStrategy);
+                docsToUpdate.add(childSolrInputDocument);
             }
         } else {
             throw new IllegalArgumentException(
                     "I don't yet support this attachment strategy: " + attachmentStrategy);
         }
-        docsToUpdate.add(solrInputDocument);
     }
 
     @Override
@@ -145,7 +152,11 @@ public class SolrEmitter extends AbstractEmitter implements Initializable {
                 req.add(docsToUpdate);
                 req.setCommitWithin(commitWithin);
                 req.setParam("failOnVersionConflicts", "false");
-                req.process(solrClient, solrCollection);
+                UpdateResponse updateResponse = req.process(solrClient, solrCollection);
+                LOG.debug("update response: " + updateResponse);
+                if (updateResponse.getStatus() != 0) {
+                    throw new TikaEmitterException("Bad status: " + updateResponse);
+                }
             } catch (Exception e) {
                 throw new TikaEmitterException("Could not add batch to solr", e);
             }
@@ -163,7 +174,8 @@ public class SolrEmitter extends AbstractEmitter implements Initializable {
                 if (updateStrategy == UpdateStrategy.ADD) {
                     solrInputDocument.setField(n, vals[0]);
                 } else {
-                    solrInputDocument.setField(n, new HashMap<String, String>() {{
+                    solrInputDocument.setField(n, new HashMap<String, String>() {
+                        {
                             put("set", vals[0]);
                         }
                     });
@@ -172,7 +184,8 @@ public class SolrEmitter extends AbstractEmitter implements Initializable {
                 if (updateStrategy == UpdateStrategy.ADD) {
                     solrInputDocument.setField(n, vals);
                 } else {
-                    solrInputDocument.setField(n, new HashMap<String, String[]>() {{
+                    solrInputDocument.setField(n, new HashMap<String, String[]>() {
+                        {
                             put("set", vals);
                         }
                     });
@@ -209,24 +222,6 @@ public class SolrEmitter extends AbstractEmitter implements Initializable {
     @Field
     public void setSocketTimeout(int socketTimeout) {
         this.socketTimeout = socketTimeout;
-    }
-
-    public String getContentField() {
-        return contentField;
-    }
-
-    /**
-     * This is the field _after_ metadata mappings have been applied
-     * that contains the "content" for each metadata object.
-     * <p>
-     * This is the field that is used if {@link #attachmentStrategy}
-     * is {@link AttachmentStrategy#CONCATENATE_CONTENT}.
-     *
-     * @param contentField
-     */
-    @Field
-    public void setContentField(String contentField) {
-        this.contentField = contentField;
     }
 
     public int getCommitWithin() {
@@ -295,6 +290,19 @@ public class SolrEmitter extends AbstractEmitter implements Initializable {
         httpClientFactory.setProxyPort(proxyPort);
     }
 
+    /**
+     * If using the {@link AttachmentStrategy#PARENT_CHILD}, this is the field name
+     * used to store the child documents.  Note that we artificially flatten all embedded
+     * documents, no matter how nested in the container document, into direct children
+     * of the root document.
+     *
+     * @param embeddedFileFieldName
+     */
+    @Field
+    public void setEmbeddedFileFieldName(String embeddedFileFieldName) {
+        this.embeddedFileFieldName = embeddedFileFieldName;
+    }
+
     @Override
     public void initialize(Map<String, Param> params) throws TikaConfigException {
         if (solrUrls == null || solrUrls.isEmpty()) {
@@ -326,7 +334,7 @@ public class SolrEmitter extends AbstractEmitter implements Initializable {
     }
 
     public enum AttachmentStrategy {
-        SKIP, CONCATENATE_CONTENT, PARENT_CHILD,
+        SEPARATE_DOCUMENTS, PARENT_CHILD,
         //anything else?
     }
 

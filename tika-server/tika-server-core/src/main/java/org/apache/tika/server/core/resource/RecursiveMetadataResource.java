@@ -78,11 +78,12 @@ public class RecursiveMetadataResource {
             TikaResource.parse(wrapper, LOG, "/rmeta", is, handler, metadata, context);
         } catch (TikaServerParseException e) {
             //do nothing
+            LOG.debug("server parse exception", e);
         } catch (SecurityException | WebApplicationException e) {
             throw e;
         } catch (Exception e) {
             //we shouldn't get here?
-            e.printStackTrace();
+            LOG.error("something went seriously wrong", e);
         }
 
         return handler.getMetadataList();
@@ -122,11 +123,12 @@ public class RecursiveMetadataResource {
         return Response
                 .ok(parseMetadataToMetadataList(att.getObject(InputStream.class), new Metadata(),
                         att.getHeaders(), info,
-                        buildHandlerConfig(att.getHeaders(), handlerTypeName))).build();
+                        buildHandlerConfig(att.getHeaders(), handlerTypeName,
+                                HandlerConfig.PARSE_MODE.RMETA))).build();
     }
 
     static HandlerConfig buildHandlerConfig(MultivaluedMap<String, String> httpHeaders,
-                                            String handlerTypeName) {
+                                            String handlerTypeName, HandlerConfig.PARSE_MODE parseMode) {
         int writeLimit = -1;
         if (httpHeaders.containsKey("writeLimit")) {
             writeLimit = Integer.parseInt(httpHeaders.getFirst("writeLimit"));
@@ -138,6 +140,7 @@ public class RecursiveMetadataResource {
         }
         return new HandlerConfig(
                 BasicContentHandlerFactory.parseHandlerType(handlerTypeName, DEFAULT_HANDLER_TYPE),
+                parseMode,
                 writeLimit, maxEmbeddedResources);
     }
 
@@ -174,9 +177,10 @@ public class RecursiveMetadataResource {
             throws Exception {
         Metadata metadata = new Metadata();
         return Response.ok(parseMetadataToMetadataList(
-                TikaResource.getInputStream(is, metadata, httpHeaders), metadata,
+                TikaResource.getInputStream(is, metadata, httpHeaders, info), metadata,
                 httpHeaders.getRequestHeaders(), info,
-                buildHandlerConfig(httpHeaders.getRequestHeaders(), handlerTypeName))).build();
+                buildHandlerConfig(httpHeaders.getRequestHeaders(), handlerTypeName,
+                        HandlerConfig.PARSE_MODE.RMETA))).build();
     }
 
     private MetadataList parseMetadataToMetadataList(InputStream is, Metadata metadata,

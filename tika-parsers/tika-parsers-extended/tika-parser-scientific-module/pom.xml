@@ -21,15 +21,12 @@
   <parent>
     <artifactId>tika-parsers-extended</artifactId>
     <groupId>org.apache.tika</groupId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.4.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>tika-parser-scientific-module</artifactId>
-
-  <properties>
-
-  </properties>
+  <name>Apache Tika scientific parser module</name>
 
   <dependencies>
     <!-- needed by AutoDetectReader in EnviHeaderParser -->
@@ -65,71 +62,10 @@
       <version>${netcdf-java.version}</version>
       <exclusions>
         <exclusion>
-          <groupId>commons-logging</groupId>
-          <artifactId>commons-logging</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.jdom</groupId>
-          <artifactId>jdom2</artifactId>
-        </exclusion>
-        <!--TIKA 2672 exclude jna to resolve the dependency convergence with tika-dl's
-        deeplearning4j-nn:1.0.0-SNAPSHOT-->
-        <exclusion>
-          <groupId>net.java.dev.jna</groupId>
-          <artifactId>jna</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.httpcomponents</groupId>
-          <artifactId>httpcore</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.httpcomponents</groupId>
-          <artifactId>httpclient</artifactId>
+          <groupId>net.sf.ehcache</groupId>
+          <artifactId>ehcache-core</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>${httpcomponents.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>commons-logging</groupId>
-          <artifactId>commons-logging</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>commons-codec</groupId>
-          <artifactId>commons-codec</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.httpcomponents</groupId>
-          <artifactId>httpcore</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpcore</artifactId>
-      <version>${httpcore.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>${commons.codec.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jdom</groupId>
-      <artifactId>jdom2</artifactId>
-      <version>2.0.6</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${guava.version}</version>
     </dependency>
     <dependency>
       <groupId>edu.ucar</groupId>
@@ -137,20 +73,8 @@
       <version>${netcdf-java.version}</version>
       <exclusions>
         <exclusion>
-          <groupId>edu.ucar</groupId>
-          <artifactId>jj2000</artifactId>
-        </exclusion>
-        <exclusion>
           <groupId>org.jsoup</groupId>
           <artifactId>jsoup</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.jdom</groupId>
-          <artifactId>jdom2</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.protobuf</groupId>
-          <artifactId>protobuf-java</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -179,12 +103,24 @@ May the gods of dependency management fix this in the future.
   <build>
     <plugins>
       <plugin>
+        <groupId>org.apache.rat</groupId>
+        <artifactId>apache-rat-plugin</artifactId>
+        <version>${rat.version}</version>
+        <configuration>
+          <excludes>
+            <exclude>src/test/resources/test-documents/**</exclude>
+            <exclude>src/test/resources/ground-truth/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven.jar.version}</version>
         <configuration>
           <archive>
             <manifestEntries>
-              <Automatic-Module-Name>org.apache.tika.parser.scientific</Automatic-Module-Name>
+              <Automatic-Module-Name>org.apache.tika.parser.scientific.module</Automatic-Module-Name>
             </manifestEntries>
           </archive>
         </configuration>
@@ -196,57 +132,10 @@ May the gods of dependency management fix this in the future.
           </execution>
         </executions>
       </plugin>
-      <plugin>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>${maven.shade.version}</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <createDependencyReducedPom>
-                false
-              </createDependencyReducedPom>
-              <filters>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
-                    <exclude>META-INF/*.SF</exclude>
-                    <exclude>META-INF/*.DSA</exclude>
-                    <exclude>META-INF/*.RSA</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-              <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheNoticeResourceTransformer">
-                  <addHeader>false</addHeader>
-                </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer" />
-
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
-                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                  <resource>META-INF/LICENSE</resource>
-                  <file>target/classes/META-INF/LICENSE</file>
-                </transformer>
-              </transformers>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.rat</groupId>
-        <artifactId>apache-rat-plugin</artifactId>
-        <version>${rat.version}</version>
-        <configuration>
-          <excludes>
-            <exclude>src/test/resources/test-documents/**</exclude>
-            <exclude>src/test/resources/ground-truth/**</exclude>
-          </excludes>
-        </configuration>
-      </plugin>
     </plugins>
-
   </build>
+
+  <scm>
+    <tag>2.2.1-rc2</tag>
+  </scm>
 </project>

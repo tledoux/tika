@@ -16,10 +16,10 @@
  */
 package org.apache.tika;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
@@ -42,6 +42,7 @@ import java.util.Set;
 import org.apache.commons.io.IOUtils;
 import org.xml.sax.ContentHandler;
 
+import org.apache.tika.config.TikaConfig;
 import org.apache.tika.extractor.EmbeddedResourceHandler;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
@@ -62,8 +63,16 @@ import org.apache.tika.sax.ToXMLContentHandler;
  */
 public abstract class TikaTest {
 
+    protected static TikaConfig DEFAULT_TIKA_CONFIG;
     protected static Parser AUTO_DETECT_PARSER = new AutoDetectParser();
 
+    static {
+        try {
+            DEFAULT_TIKA_CONFIG = new TikaConfig();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
     public static void assertContainsCount(String needle, String haystack, int targetCount) {
         int i = haystack.indexOf(needle);
         int count = 0;
@@ -71,24 +80,24 @@ public abstract class TikaTest {
             count++;
             i = haystack.indexOf(needle, i + 1);
         }
-        assertEquals("found " + count + " but should have found: " + targetCount, targetCount,
-                count);
+        assertEquals(targetCount, count,
+                "found " + count + " but should have found: " + targetCount);
     }
 
     public static void assertContains(String needle, String haystack) {
-        assertTrue(needle + " not found in:\n" + haystack, haystack.contains(needle));
+        assertTrue(haystack.contains(needle), needle + " not found in:\n" + haystack);
     }
 
     public static <T> void assertContains(T needle, Collection<? extends T> haystack) {
-        assertTrue(needle + " not found in:\n" + haystack, haystack.contains(needle));
+        assertTrue(haystack.contains(needle), needle + " not found in:\n" + haystack);
     }
 
     public static void assertNotContained(String needle, String haystack) {
-        assertFalse(needle + " unexpectedly found in:\n" + haystack, haystack.contains(needle));
+        assertFalse(haystack.contains(needle), needle + " unexpectedly found in:\n" + haystack);
     }
 
     public static <T> void assertNotContained(T needle, Collection<? extends T> haystack) {
-        assertFalse(needle + " unexpectedly found in:\n" + haystack, haystack.contains(needle));
+        assertFalse(haystack.contains(needle), needle + " unexpectedly found in:\n" + haystack);
     }
 
     /**
@@ -239,6 +248,13 @@ public abstract class TikaTest {
 
     protected XMLResult getXML(String filePath, ParseContext parseContext) throws Exception {
         return getXML(filePath, AUTO_DETECT_PARSER, parseContext);
+    }
+
+    protected XMLResult getXML(String filePath, Parser parser, Metadata metadata,
+                               ParseContext parseContext)
+            throws Exception {
+        return getXML(getResourceAsStream("/test-documents/" + filePath), parser,
+                metadata, parseContext);
     }
 
     protected XMLResult getXML(String filePath, Metadata metadata, ParseContext parseContext)

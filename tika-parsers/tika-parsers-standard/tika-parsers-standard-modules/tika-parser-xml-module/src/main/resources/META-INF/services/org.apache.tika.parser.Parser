@@ -13,10 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+org.apache.tika.parser.tmx.TMXParser
 org.apache.tika.parser.xliff.XLIFF12Parser
 org.apache.tika.parser.xliff.XLZParser
 org.apache.tika.parser.xml.DcXMLParser
-org.apache.tika.parser.xml.XMLParser
 org.apache.tika.parser.xml.FictionBookParser
 
 

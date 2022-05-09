@@ -88,6 +88,8 @@ import org.apache.tika.utils.StringUtils;
 public class HttpClientFactory {
 
     public static final String AES_ENV_VAR = "AES_KEY";
+
+    private static final String CIPHER_TYPE = "AES/GCM/PKCS5Padding";
     private static final Logger LOG = LoggerFactory.getLogger(HttpClientFactory.class);
 
     private AES aes = null;
@@ -105,18 +107,8 @@ public class HttpClientFactory {
     private String password;
     private String ntDomain;//if using nt credentials
     private String authScheme = "basic"; //ntlm or basic
-    private final boolean credentialsAESEncrypted = false;
-
-
-    public HttpClientFactory() throws TikaConfigException {
-        if (credentialsAESEncrypted && System.getenv(AES_ENV_VAR) == null) {
-            throw new TikaConfigException(
-                    "must specify aes key in the environment variable: " + AES_ENV_VAR);
-        }
-        if (credentialsAESEncrypted) {
-            aes = new AES();
-        }
-    }
+    private boolean credentialsAESEncrypted = false;
+    private boolean disableContentCompression = false;
 
     public String getProxyHost() {
         return proxyHost;
@@ -227,6 +219,44 @@ public class HttpClientFactory {
         this.authScheme = authScheme;
     }
 
+    public void setCredentialsAESEncrypted(boolean credentialsAESEncrypted)
+            throws TikaConfigException {
+        if (credentialsAESEncrypted) {
+            if (System.getenv(AES_ENV_VAR) == null) {
+                throw new TikaConfigException(
+                        "must specify aes key in the environment variable: " + AES_ENV_VAR);
+            }
+            if (credentialsAESEncrypted) {
+                aes = new AES();
+            }
+        }
+        this.credentialsAESEncrypted = credentialsAESEncrypted;
+    }
+
+    public void setDisableContentCompression(boolean disableContentCompression) {
+        this.disableContentCompression = disableContentCompression;
+    }
+
+    public HttpClientFactory copy() throws TikaConfigException {
+        HttpClientFactory cp = new HttpClientFactory();
+        cp.setAllowedHostsForRedirect(new HashSet<>(allowedHostsForRedirect));
+        cp.setAuthScheme(authScheme);
+        cp.setConnectTimeout(connectTimeout);
+        cp.setCredentialsAESEncrypted(credentialsAESEncrypted);
+        cp.setDisableContentCompression(disableContentCompression);
+        cp.setKeepAliveOnBadKeepAliveValueMs(keepAliveOnBadKeepAliveValueMs);
+        cp.setMaxConnectionsPerRoute(maxConnectionsPerRoute);
+        cp.setMaxConnections(maxConnections);
+        cp.setNtDomain(ntDomain);
+        cp.setPassword(password);
+        cp.setProxyHost(proxyHost);
+        cp.setProxyPort(proxyPort);
+        cp.setRequestTimeout(requestTimeout);
+        cp.setSocketTimeout(socketTimeout);
+        return cp;
+    }
+
+
     public HttpClient build() throws TikaConfigException {
         LOG.info("http client does not verify ssl at this point.  " +
                 "If you need that, please open a ticket.");
@@ -252,6 +282,9 @@ public class HttpClientFactory {
         manager.setMaxTotal(maxConnections);
 
         HttpClientBuilder builder = HttpClients.custom();
+        if (disableContentCompression) {
+            builder.disableContentCompression();
+        }
         addCredentialsProvider(builder);
         addProxy(builder);
         return builder.setConnectionManager(manager)
@@ -391,19 +424,19 @@ public class HttpClientFactory {
         }
     }
 
+
     private static class AES {
         private final SecretKeySpec secretKey;
-        private byte[] key;
 
         private AES() throws TikaConfigException {
             secretKey = setKey(System.getenv(AES_ENV_VAR));
         }
 
-        private SecretKeySpec setKey(String myKey) throws TikaConfigException {
-            MessageDigest sha = null;
+        private static SecretKeySpec setKey(String myKey) throws TikaConfigException {
+            //TODO: sha-256?
             try {
-                key = myKey.getBytes(StandardCharsets.UTF_8);
-                sha = MessageDigest.getInstance("SHA-1");
+                byte[] key = myKey.getBytes(StandardCharsets.UTF_8);
+                MessageDigest sha = MessageDigest.getInstance("SHA-1");
                 key = sha.digest(key);
                 key = Arrays.copyOf(key, 16);
                 return new SecretKeySpec(key, "AES");
@@ -414,7 +447,7 @@ public class HttpClientFactory {
 
         public String encrypt(String strToEncrypt) throws TikaConfigException {
             try {
-                Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+                Cipher cipher = Cipher.getInstance(CIPHER_TYPE);
                 cipher.init(Cipher.ENCRYPT_MODE, secretKey);
                 return Base64.getEncoder().encodeToString(
                         cipher.doFinal(strToEncrypt.getBytes(StandardCharsets.UTF_8)));
@@ -426,7 +459,7 @@ public class HttpClientFactory {
 
         public String decrypt(String strToDecrypt) throws TikaConfigException {
             try {
-                Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
+                Cipher cipher = Cipher.getInstance(CIPHER_TYPE);
                 cipher.init(Cipher.DECRYPT_MODE, secretKey);
                 return new String(cipher.doFinal(Base64.getDecoder().decode(strToDecrypt)),
                         StandardCharsets.UTF_8);

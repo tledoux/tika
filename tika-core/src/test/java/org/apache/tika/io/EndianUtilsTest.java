@@ -17,12 +17,12 @@
 
 package org.apache.tika.io;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.ByteArrayInputStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class EndianUtilsTest {
     @Test
@@ -67,6 +67,24 @@ public class EndianUtilsTest {
         data = new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
         try {
             EndianUtils.readUIntLE(new ByteArrayInputStream(data));
+            fail("Should have thrown exception");
+        } catch (EndianUtils.BufferUnderrunException e) {
+            //swallow
+        }
+    }
+
+    @Test
+    public void testReadIntME() throws Exception {
+        // Example from https://yamm.finance/wiki/Endianness.html#mwAiw 
+        byte[] data = new byte[]{(byte) 0x0b, (byte) 0x0a, (byte) 0x0d, (byte) 0x0c};
+        assertEquals(0x0a0b0c0d, EndianUtils.readIntME(new ByteArrayInputStream(data)));
+
+        data = new byte[]{(byte) 0xFE, (byte) 0xFF, (byte) 0xFC, (byte) 0xFD};
+        assertEquals(0xfffefdfc, EndianUtils.readIntME(new ByteArrayInputStream(data)));
+
+        data = new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+        try {
+            EndianUtils.readIntME(new ByteArrayInputStream(data));
             fail("Should have thrown exception");
         } catch (EndianUtils.BufferUnderrunException e) {
             //swallow

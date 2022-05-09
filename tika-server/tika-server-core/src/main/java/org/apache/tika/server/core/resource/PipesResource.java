@@ -53,6 +53,14 @@ public class PipesResource {
     private final PipesParser pipesParser;
     public PipesResource(java.nio.file.Path tikaConfig) throws TikaConfigException, IOException {
         PipesConfig pipesConfig = PipesConfig.load(tikaConfig);
+        //this has to be zero. everything must be emitted through the PipesServer
+        long maxEmit = pipesConfig.getMaxForEmitBatchBytes();
+        if (maxEmit != 0) {
+            pipesConfig.setMaxForEmitBatchBytes(0);
+            if (maxEmit != PipesConfig.DEFAULT_MAX_FOR_EMIT_BATCH) {
+                LOG.warn("resetting max for emit batch to 0");
+            }
+        }
         this.pipesParser = new PipesParser(pipesConfig);
     }
 
@@ -85,7 +93,7 @@ public class PipesResource {
     }
 
     private Map<String, String> processTuple(FetchEmitTuple fetchEmitTuple)
-            throws PipesException, IOException {
+            throws InterruptedException, PipesException, IOException {
 
         PipesResult pipesResult = pipesParser.parse(fetchEmitTuple);
         switch (pipesResult.getStatus()) {
@@ -95,6 +103,7 @@ public class PipesResource {
             case EMIT_EXCEPTION:
                 return returnEmitException(pipesResult.getMessage());
             case PARSE_SUCCESS:
+            case PARSE_SUCCESS_WITH_EXCEPTION:
                 throw new IllegalArgumentException("Should have emitted in forked process?!");
             case EMIT_SUCCESS:
                 return returnSuccess();

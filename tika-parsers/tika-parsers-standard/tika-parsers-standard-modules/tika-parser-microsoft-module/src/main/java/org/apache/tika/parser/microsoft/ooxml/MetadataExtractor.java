@@ -23,13 +23,13 @@ import java.util.Optional;
 import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.ooxml.extractor.POIXMLTextExtractor;
 import org.apache.poi.openxml4j.opc.internal.PackagePropertiesPart;
-import org.apache.poi.openxml4j.util.Nullable;
 import org.apache.poi.xssf.extractor.XSSFEventBasedExcelExtractor;
 import org.apache.xmlbeans.impl.values.XmlValueOutOfRangeException;
 import org.openxmlformats.schemas.officeDocument.x2006.customProperties.CTProperty;
 import org.openxmlformats.schemas.officeDocument.x2006.extendedProperties.CTProperties;
 
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.metadata.DublinCore;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.Office;
 import org.apache.tika.metadata.OfficeOpenXMLCore;
@@ -79,7 +79,7 @@ public class MetadataExtractor {
         addMultiProperty(metadata, TikaCoreProperties.CREATOR, propsHolder.getCreatorProperty());
         setProperty(metadata, TikaCoreProperties.DESCRIPTION, propsHolder.getDescriptionProperty());
         setProperty(metadata, TikaCoreProperties.IDENTIFIER, propsHolder.getIdentifierProperty());
-        addProperty(metadata, OfficeOpenXMLCore.SUBJECT, propsHolder.getSubjectProperty());
+        addProperty(metadata, DublinCore.SUBJECT, propsHolder.getSubjectProperty());
         addProperty(metadata, Office.KEYWORDS, propsHolder.getKeywordsProperty());
         setProperty(metadata, TikaCoreProperties.LANGUAGE, propsHolder.getLanguageProperty());
         setProperty(metadata, TikaCoreProperties.MODIFIER, propsHolder.getLastModifiedByProperty());
@@ -266,12 +266,6 @@ public class MetadataExtractor {
         } else {
             throw new IllegalArgumentException(
                     "Can't add property of class: " + optionalValue.getClass());
-        }
-    }
-
-    private void setProperty(Metadata metadata, String name, Nullable<?> value) {
-        if (value.getValue() != null) {
-            setProperty(metadata, name, value.getValue().toString());
         }
     }
 

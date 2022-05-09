@@ -16,29 +16,32 @@
  */
 package org.apache.tika.parser.iwork.iwana;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.InputStream;
+import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.ContentHandler;
 
 import org.apache.tika.TikaTest;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
 
 /**
  * Limited testing for the iWorks 13 format parser, which
- * currently doesn't do anything more than detection....
+ * currently doesn't do much more than detection and handling
+ * some embedded files....
  */
 public class IWork13ParserTest extends TikaTest {
     private IWork13PackageParser iWorkParser;
     private ParseContext parseContext;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         iWorkParser = new IWork13PackageParser();
         parseContext = new ParseContext();
@@ -52,9 +55,7 @@ public class IWork13ParserTest extends TikaTest {
         ContentHandler handler = new BodyContentHandler();
         iWorkParser.parse(input, handler, metadata, parseContext);
 
-        // Currently parsing is a no-op, so will only get the Type
-        assertEquals(1, metadata.size());
-        assertEquals("", handler.toString());
+        assertEquals(9, metadata.size());
         assertEquals(IWork13PackageParser.IWork13DocumentType.KEYNOTE13.getType().toString(),
                 metadata.get(Metadata.CONTENT_TYPE));
     }
@@ -69,8 +70,10 @@ public class IWork13ParserTest extends TikaTest {
         // Currently parsing is a no-op, and we can't get the type without
         //  decoding the Snappy stream
         // TODO Test properly when a full Parser is added
-        assertEquals(0, metadata.size());
-        assertEquals("", handler.toString());
+        assertEquals(
+                IWork13PackageParser.IWork13DocumentType.UNKNOWN13.getType().toString(),
+                metadata.get(Metadata.CONTENT_TYPE));
+        assertEquals("preview.jpg", handler.toString().trim());
     }
 
     @Test
@@ -83,7 +86,25 @@ public class IWork13ParserTest extends TikaTest {
         // Currently parsing is a no-op, and we can't get the type without
         //  decoding the Snappy stream
         // TODO Test properly when a full Parser is added
-        assertEquals(0, metadata.size());
-        assertEquals("", handler.toString());
+        assertEquals(
+                IWork13PackageParser.IWork13DocumentType.UNKNOWN13.getType().toString(),
+                metadata.get(Metadata.CONTENT_TYPE));
+        assertEquals("preview.jpg", handler.toString().trim());
+    }
+
+    @Test
+    public void testNumbers13WFileName() throws Exception {
+        Metadata metadata = new Metadata();
+        metadata.set(TikaCoreProperties.RESOURCE_NAME_KEY, "testNumbers2013.numbers");
+        List<Metadata> metadataList = getRecursiveMetadata("testNumbers2013.numbers", metadata);
+        assertEquals(2, metadataList.size());
+        assertEquals("application/vnd.apple.numbers.13",
+                metadataList.get(0).get(Metadata.CONTENT_TYPE));
+        assertEquals("true", metadataList.get(0).get("iworks:isMultiPage"));
+        assertEquals("C5ED6463-575C-43B9-8FDA-1957B186C422",
+                metadataList.get(0).get("iworks:versionUUID"));
+        assertEquals("image/jpeg", metadataList.get(1).get(Metadata.CONTENT_TYPE));
+        assertEquals(TikaCoreProperties.EmbeddedResourceType.THUMBNAIL.toString(),
+                metadataList.get(1).get(TikaCoreProperties.EMBEDDED_RESOURCE_TYPE));
     }
 }

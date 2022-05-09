@@ -31,14 +31,24 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.cli.CommandLine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 import org.apache.tika.config.ConfigBase;
 import org.apache.tika.exception.TikaConfigException;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.utils.ProcessUtils;
 import org.apache.tika.utils.StringUtils;
+import org.apache.tika.utils.XMLReaderUtils;
 
 public class TikaServerConfig extends ConfigBase {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TikaServerConfig.class);
+
+    private static Pattern SYS_PROPS = Pattern.compile("\\$\\{sys:([-_0-9A-Za-z]+)\\}");
 
     public static final int DEFAULT_PORT = 9998;
     public static final String DEFAULT_HOST = "localhost";
@@ -47,7 +57,16 @@ public class TikaServerConfig extends ConfigBase {
      * Number of milliseconds to wait per server task (parse, detect, unpack, translate,
      * etc.) before timing out and shutting down the forked process.
      */
-    public static final long DEFAULT_TASK_TIMEOUT_MILLIS = 120000;
+    public static final long DEFAULT_TASK_TIMEOUT_MILLIS = 300000;
+
+    /**
+     * Clients may not set a timeout less than this amount.  This hinders
+     * malicious clients from setting the timeout to a very low value
+     * and DoS the server by forcing timeout restarts.  Making tika-server
+     * available to untrusted clients is dangerous.
+     */
+    public static final long DEFAULT_MINIMUM_TIMEOUT_MILLIS = 30000;
+
     /**
      * How often to check to see that the task hasn't timed out
      */
@@ -69,8 +88,8 @@ public class TikaServerConfig extends ConfigBase {
                     " your emitter endpoints.  See CVE-2015-3271.\n" +
                     "Please make sure you know what you are doing.";
     private static final List<String> ONLY_IN_FORK_MODE = Arrays.asList(
-            new String[]{"taskTimeoutMillis", "taskPulseMillis", "pingTimeoutMillis",
-                    "pingPulseMillis", "maxFiles", "javaHome", "maxRestarts", "numRestarts",
+            new String[]{"taskTimeoutMillis", "taskPulseMillis",
+                    "maxFiles", "javaPath", "maxRestarts", "numRestarts",
                     "forkedStatusFile", "maxForkedStartupMillis", "tmpFilePrefix"});
 
         /*
@@ -90,19 +109,24 @@ public class TikaServerConfig extends ConfigBase {
     private int maxRestarts = -1;
     private long maxFiles = 100000;
     private long taskTimeoutMillis = DEFAULT_TASK_TIMEOUT_MILLIS;
+    private long minimumTimeoutMillis = DEFAULT_MINIMUM_TIMEOUT_MILLIS;
     private long taskPulseMillis = DEFAULT_TASK_PULSE_MILLIS;
     private long maxforkedStartupMillis = DEFAULT_FORKED_STARTUP_MILLIS;
     private boolean enableUnsecureFeatures = false;
     private String cors = "";
     private boolean returnStackTrace = false;
     private boolean noFork = false;
-    private String tempFilePrefix = "apache-tika-server-forked-tmp-"; //can be set for debugging
+    //TODO: make parameterizable for debugging
+    private String tempFilePrefix = "apache-tika-server-forked-tmp-";
+    private Set<String> supportedFetchers = new HashSet<>();
+    private Set<String> supportedEmitters = new HashSet<>();
     private List<String> forkedJvmArgs = new ArrayList<>();
     private String idBase = UUID.randomUUID().toString();
     private String port = Integer.toString(DEFAULT_PORT);
     private String host = DEFAULT_HOST;
     private int digestMarkLimit = DEFAULT_DIGEST_MARK_LIMIT;
     private String digest = "";
+    private String javaPath = "java";
     //debug or info only
     private String logLevel = "";
     private Path configPath;
@@ -112,6 +136,7 @@ public class TikaServerConfig extends ConfigBase {
     private String forkedStatusFile;
     private int numRestarts = 0;
 
+    private TlsConfig tlsConfig = new TlsConfig();
     /**
      * Config with only the defaults
      */
@@ -126,7 +151,6 @@ public class TikaServerConfig extends ConfigBase {
         Set<String> settings = new HashSet<>();
         if (commandLine.hasOption("c")) {
             config = load(Paths.get(commandLine.getOptionValue("c")), commandLine, settings);
-            config.setConfigPath(commandLine.getOptionValue("c"));
         } else {
             config = new TikaServerConfig();
         }
@@ -169,11 +193,17 @@ public class TikaServerConfig extends ConfigBase {
     static TikaServerConfig load(Path p, CommandLine commandLine, Set<String> settings) throws IOException,
             TikaException {
         try (InputStream is = Files.newInputStream(p)) {
-            return TikaServerConfig.load(is, commandLine, settings);
+            TikaServerConfig config = TikaServerConfig.load(is, commandLine, settings);
+            if (config.getConfigPath() == null) {
+                config.setConfigPath(p.toAbsolutePath().toString());
+            }
+            loadSupportedFetchersEmitters(config);
+            return config;
         }
     }
 
-    static TikaServerConfig load(InputStream is, CommandLine commandLine, Set<String> settings)
+    private static TikaServerConfig load(InputStream is, CommandLine commandLine,
+                                       Set<String> settings)
             throws IOException, TikaException {
         TikaServerConfig tikaServerConfig = new TikaServerConfig();
         Set<String> configSettings = tikaServerConfig.configure("server", is);
@@ -185,11 +215,70 @@ public class TikaServerConfig extends ConfigBase {
         return tikaServerConfig;
     }
 
+    private static void loadSupportedFetchersEmitters(TikaServerConfig tikaServerConfig)
+            throws IOException, TikaConfigException {
+        //this is an abomination... clean up this double read
+        try (InputStream is = Files.newInputStream(tikaServerConfig.getConfigPath())) {
+            Node properties = null;
+            try {
+                properties = XMLReaderUtils.buildDOM(is).getDocumentElement();
+            } catch (SAXException e) {
+                throw new IOException(e);
+            } catch (TikaException e) {
+                throw new TikaConfigException("problem loading xml to dom", e);
+            }
+            if (!properties.getLocalName().equals("properties")) {
+                throw new TikaConfigException("expect properties as root node");
+            }
+            NodeList children = properties.getChildNodes();
+            for (int i = 0; i < children.getLength(); i++) {
+                Node child = children.item(i);
+                if ("fetchers".equals(child.getLocalName())) {
+                    loadSupported(child, "fetcher", tikaServerConfig.supportedFetchers);
+                } else if ("emitters".equals(child.getLocalName())) {
+                    loadSupported(child, "emitter", tikaServerConfig.supportedEmitters);
+                }
+            }
+        }
+    }
+
+    private static void loadSupported(Node compound,
+                                      String itemName,
+                                      Set<String> supported) {
+        NodeList children = compound.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            if (itemName.equals(child.getLocalName())) {
+                String name = getName(child);
+                if (name != null) {
+                    supported.add(name);
+                }
+            }
+        }
+    }
+
+    private static String getName(Node fetcherOrEmitter) {
+        NodeList children = fetcherOrEmitter.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            if ("params".equals(child.getLocalName())) {
+                NodeList params = child.getChildNodes();
+                for (int j = 0; j < params.getLength(); j++) {
+                    Node param = params.item(j);
+                    if ("name".equals(param.getLocalName())) {
+                        return param.getTextContent();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     public boolean isNoFork() {
         return noFork;
     }
 
-    private void setNoFork(boolean noFork) {
+    public void setNoFork(boolean noFork) {
         this.noFork = noFork;
     }
 
@@ -280,6 +369,14 @@ public class TikaServerConfig extends ConfigBase {
         return args;
     }
 
+    public long getMinimumTimeoutMillis() {
+        return minimumTimeoutMillis;
+    }
+
+    public void setMinimumTimeoutMillis(long minimumTimeoutMillis) {
+        this.minimumTimeoutMillis = minimumTimeoutMillis;
+    }
+
     public String getIdBase() {
         return idBase;
     }
@@ -290,7 +387,11 @@ public class TikaServerConfig extends ConfigBase {
      * @return
      */
     public String getJavaPath() {
-        return "java";
+        return javaPath;
+    }
+
+    public void setJavaPath(String javaPath) {
+        this.javaPath = javaPath;
     }
 
     public List<String> getForkedJvmArgs() {
@@ -299,8 +400,9 @@ public class TikaServerConfig extends ConfigBase {
     }
 
     public void setForkedJvmArgs(List<String> forkedJvmArgs) {
-        this.forkedJvmArgs = new ArrayList<>(forkedJvmArgs);
+        this.forkedJvmArgs = new ArrayList<>(interpolateSysProps(forkedJvmArgs));
     }
+
 
     public String getTempFilePrefix() {
         return tempFilePrefix;
@@ -431,6 +533,12 @@ public class TikaServerConfig extends ConfigBase {
         this.returnStackTrace = returnStackTrace;
     }
 
+    public void setTlsConfig(TlsConfig tlsConfig) {
+        this.tlsConfig = tlsConfig;
+    }
+    public TlsConfig getTlsConfig() {
+        return tlsConfig;
+    }
     public List<String> getEndpoints() {
         return endpoints;
     }
@@ -444,7 +552,7 @@ public class TikaServerConfig extends ConfigBase {
         return idBase;
     }
 
-    private void setId(String id) {
+    public void setId(String id) {
         this.idBase = id;
     }
 
@@ -505,6 +613,43 @@ public class TikaServerConfig extends ConfigBase {
             }
         }
         return indivPorts.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    public Set<String> getSupportedFetchers() {
+        return supportedFetchers;
+    }
+
+    public Set<String> getSupportedEmitters() {
+        return supportedEmitters;
+    }
+
+    protected static List<String> interpolateSysProps(List<String> forkedJvmArgs) {
+        List<String> ret = new ArrayList<>();
+        for (String arg : forkedJvmArgs) {
+            if (arg.startsWith("-D")) {
+                String interpolated = interpolate(arg);
+                ret.add(interpolated);
+            } else {
+                ret.add(arg);
+            }
+        }
+        return ret;
+    }
+
+    private static String interpolate(String arg) {
+        StringBuffer sb = new StringBuffer();
+        Matcher m = SYS_PROPS.matcher(arg);
+        while (m.find()) {
+            String prop = System.getProperty(m.group(1));
+            LOG.debug("interpolating {} -> {}", m.group(1), prop);
+            if (prop == null) {
+                LOG.warn("no system property set for {}, falling back to {}", m.group(1), arg);
+                return arg;
+            }
+            m.appendReplacement(sb, Matcher.quoteReplacement(prop));
+        }
+        m.appendTail(sb);
+        return sb.toString();
     }
 
 }

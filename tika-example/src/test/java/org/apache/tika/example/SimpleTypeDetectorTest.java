@@ -18,15 +18,16 @@
 package org.apache.tika.example;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 import org.junit.Test;
 
+import org.apache.tika.TikaTest;
+
 @SuppressWarnings("deprecation")
-public class SimpleTypeDetectorTest {
+public class SimpleTypeDetectorTest extends TikaTest {
 
     @Test
     public void testSimpleTypeDetector() throws Exception {
@@ -39,7 +40,7 @@ public class SimpleTypeDetectorTest {
 
         System.setOut(out);
 
-        assertEquals("pom.xml: application/xml", buffer.toString(UTF_8.name()).trim());
+        assertContains("pom.xml: application/xml", buffer.toString(UTF_8.name()).trim());
     }
 
 }

@@ -35,6 +35,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.jar.Attributes;
@@ -53,6 +54,7 @@ import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.mime.MediaType;
+import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.CompositeParser;
 import org.apache.tika.parser.DefaultParser;
 import org.apache.tika.parser.ParseContext;
@@ -97,7 +99,9 @@ public class BundleIT {
                 bundle(new File(base, "tika-core.jar").toURI().toURL().toString()),
                 //I couldn't find a way to get the build of bundle to work via imports
                 //for this one
-                mavenBundle("commons-io", "commons-io", "2.8.0"),
+                mavenBundle("commons-io", "commons-io", "2.11.0"),
+                mavenBundle("org.apache.logging.log4j", "log4j-core", "2.17.1"),
+                mavenBundle("org.apache.logging.log4j", "log4j-api", "2.17.1"),
                 mavenBundle("org.ops4j.pax.logging", "pax-logging-api", "1.8.5"),
                 mavenBundle("org.ops4j.pax.logging", "pax-logging-service", "1.8.5"),
                 junitBundles(),
@@ -182,7 +186,6 @@ public class BundleIT {
     }
 
     @Test
-    //@Ignore("until we can figure out why OverrideDetector is not loaded by osgi")
     public void testBundleDetectors() throws Exception {
         //For some reason, the detector created by OSGi has a flat
         //list of detectors, whereas the detector created by the traditional
@@ -259,17 +262,15 @@ public class BundleIT {
         try (InputStream stream = new FileInputStream("src/test/resources/testOCR.jpg")) {
             tesseractParser.parse(stream, handler, new Metadata(), context);
         }
-
     }
 
     @Test
     public void testTikaBundle() throws Exception {
-        Tika tika = new Tika();
 
         // Package extraction
         ContentHandler handler = new BodyContentHandler();
 
-        Parser parser = tika.getParser();
+        Parser parser = new AutoDetectParser(defaultParser);
         ParseContext context = new ParseContext();
         context.set(Parser.class, parser);
 
@@ -300,12 +301,11 @@ public class BundleIT {
 
     @Test
     public void testPoiTikaBundle() throws Exception {
-        Tika tika = new Tika();
 
         // Package extraction
         ContentHandler handler = new BodyContentHandler();
 
-        Parser parser = tika.getParser();
+        Parser parser = new AutoDetectParser(contentTypeDetector, defaultParser);
         ParseContext context = new ParseContext();
         context.set(Parser.class, parser);
 
@@ -320,12 +320,10 @@ public class BundleIT {
     @Test
     @Ignore
     public void testAll() throws Exception {
-        Tika tika = new Tika();
-
         // Package extraction
         ContentHandler handler = new BodyContentHandler();
 
-        Parser parser = tika.getParser();
+        Parser parser = new AutoDetectParser(defaultParser);
         ParseContext context = new ParseContext();
         context.set(Parser.class, parser);
         Set<String> needToFix = new HashSet<>();
@@ -345,11 +343,12 @@ public class BundleIT {
             } catch (EncryptedDocumentException e) {
                 //swallow
             } catch (SAXException e) {
-                //
+                //swallow
             } catch (TikaException e) {
                 System.err.println("tika Exception " + f.getName());
                 e.printStackTrace();
             }
+            System.out.println(Arrays.asList(metadata.getValues(TikaCoreProperties.TIKA_PARSED_BY)));
         }
     }
 

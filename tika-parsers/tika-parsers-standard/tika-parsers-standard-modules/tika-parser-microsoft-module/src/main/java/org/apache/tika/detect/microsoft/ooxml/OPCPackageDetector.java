@@ -51,7 +51,7 @@ import org.apache.tika.detect.zip.ZipContainerDetector;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.ParseContext;
-import org.apache.tika.sax.OfflineContentHandler;
+import org.apache.tika.parser.microsoft.ooxml.OPCPackageWrapper;
 import org.apache.tika.sax.StoppingEarlyException;
 import org.apache.tika.utils.XMLReaderUtils;
 
@@ -222,8 +222,7 @@ public class OPCPackageDetector implements ZipContainerDetector {
     private static MediaType parseOOXMLContentTypes(InputStream is) {
         ContentTypeHandler contentTypeHandler = new ContentTypeHandler();
         try {
-            XMLReaderUtils.parseSAX(is, new OfflineContentHandler(contentTypeHandler),
-                    new ParseContext());
+            XMLReaderUtils.parseSAX(is, contentTypeHandler, new ParseContext());
         } catch (SecurityException e) {
             throw e;
         } catch (Exception e) {
@@ -234,31 +233,42 @@ public class OPCPackageDetector implements ZipContainerDetector {
 
     @Override
     public MediaType detect(ZipFile zipFile, TikaInputStream stream) throws IOException {
+        MediaType type = null;
+
+
         //as of 4.x, POI throws an exception for non-POI OPC file types
         //unless we change POI, we can't rely on POI for non-POI files
-        ZipEntrySource zipEntrySource = new ZipFileZipEntrySource(zipFile);
+        ZipEntrySource zipEntrySource =
+                new CloseShieldZipFileZipEntrySource(zipFile);
 
+        //in POI 5.2.0, if there's an exception during detection,
+        //close() is called on the pkg instead of revert(), which leads
+        //to needless logging. Do a preliminary test for OPC now.
+        if (zipEntrySource.getEntry("[Content_Types].xml") == null) {
+            return type;
+        }
         // Use POI to open and investigate it for us
         //Unfortunately, POI can throw a RuntimeException...so we
         //have to catch that.
         OPCPackage pkg = null;
-        MediaType type = null;
         try {
             pkg = OPCPackage.open(zipEntrySource);
             type = detectOfficeOpenXML(pkg);
-
         } catch (SecurityException e) {
             closeQuietly(zipEntrySource);
-            closeQuietly(zipFile);
             //TIKA-2571
             throw e;
         } catch (InvalidFormatException | RuntimeException e) {
-            closeQuietly(zipEntrySource);
-            closeQuietly(zipFile);
+            //no need to close zipEntrySource because it
+            //only closes the underlying zipFile, not any other resources
+            //as of this writing.... :'(
             return null;
         }
+        //this will now be closed eventually when the wrapper closes
+        //the pkg which will close this
+        ((CloseShieldZipFileZipEntrySource)zipEntrySource).allowClose();
         //only set the open container if we made it here
-        stream.setOpenContainer(pkg);
+        stream.setOpenContainer(new OPCPackageWrapper(pkg));
         return type;
     }
 
@@ -281,15 +291,23 @@ public class OPCPackageDetector implements ZipContainerDetector {
                 detectContext.set(OOXMLHintCounter.class, cnt);
             }
             cnt.increment();
-            if (cnt.getCount() > 2) {
+            //we used to short-circuit, but ooxml files that are
+            //not created by actual microsoft products do not tend to
+            //put [Content_Types.xml] as the first physical entry in the zip file
+            //so we need to read through the full file
+            /*if (cnt.getCount() > 2) {
                 return TIKA_OOXML;
-            }
+            }*/
         }
         return null;
     }
 
     @Override
     public MediaType streamingDetectFinal(StreamingDetectContext detectContext) {
+        OOXMLHintCounter cnt = detectContext.get(OOXMLHintCounter.class);
+        if (cnt != null && cnt.getCount() > 2) {
+            return TIKA_OOXML;
+        }
         return null;
     }
 
@@ -343,6 +361,25 @@ public class OPCPackageDetector implements ZipContainerDetector {
 
         private int getCount() {
             return cnt;
+        }
+    }
+
+    private static class CloseShieldZipFileZipEntrySource extends ZipFileZipEntrySource {
+        private boolean allowClose = false;
+        public CloseShieldZipFileZipEntrySource(ZipFile zipFile) {
+            super(zipFile);
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (allowClose) {
+                super.close();
+            }
+            //no-op, do not close the underlying zipFile
+        }
+
+        public void allowClose() {
+            allowClose = true;
         }
     }
 }

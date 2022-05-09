@@ -17,13 +17,13 @@
 package org.apache.tika.parser.mail;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -40,8 +40,8 @@ import java.util.List;
 import java.util.Locale;
 
 import org.apache.james.mime4j.stream.MimeConfig;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.helpers.DefaultHandler;
@@ -72,11 +72,11 @@ public class RFC822ParserTest extends TikaTest {
     private static InputStream getStream(String name) {
         InputStream stream =
                 Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
-        assertNotNull("Test file not found " + name, stream);
+        assertNotNull(stream, "Test file not found " + name);
         return stream;
     }
 
-    @BeforeClass
+    @BeforeAll
     public static void setUp() throws Exception {
 
         try (InputStream is = getStream(
@@ -385,7 +385,7 @@ public class RFC822ParserTest extends TikaTest {
                 "Sun, 15 May 2016 01:32:00", //no timezone
                 "Sunday, May 15 2016 1:32 AM", "May 15 2016 1:32am", "May 15 2016 1:32 am",
                 "2016-05-15 01:32:00", "      Sun, 15 May 2016 3:32:00 +0200",
-//format correctly handled by mime4j if no leading whitespace
+                //format correctly handled by mime4j if no leading whitespace
                 "      Sun, 14 May 2016 20:32:00 EST",}) {
             testDate(dateString, expected);
         }
@@ -407,8 +407,8 @@ public class RFC822ParserTest extends TikaTest {
                 "96/12/02",}) {
             Date parsedDate = getDate(dateString);
             if (parsedDate != null) {
-                assertTrue("date must be after 1980:" + dateString,
-                        parsedDate.getTime() > date1980.getTime());
+                assertTrue(parsedDate.getTime() > date1980.getTime(),
+                        "date must be after 1980:" + dateString);
             }
         }
         //TODO: mime4j misparses these to pre 1980 dates
@@ -421,11 +421,11 @@ public class RFC822ParserTest extends TikaTest {
 
     private void testDate(String dateString, String expected) throws Exception {
         Date parsedDate = getDate(dateString);
-        assertNotNull("couldn't parse " + dateString, parsedDate);
+        assertNotNull(parsedDate, "couldn't parse " + dateString);
         DateFormat df =
                 new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", new DateFormatSymbols(Locale.US));
         String parsedDateString = df.format(parsedDate);
-        assertEquals("failed to match: " + dateString, expected, parsedDateString);
+        assertEquals(expected, parsedDateString, "failed to match: " + dateString);
     }
 
     private Date getDate(String dateString) throws Exception {
@@ -600,6 +600,17 @@ public class RFC822ParserTest extends TikaTest {
     }
 
     @Test
+    public void testArc() throws Exception {
+        /*
+        This tests an email with ARC-* headers but that does not begin 
+        with one, and was detected as HTML
+        */
+        List<Metadata> metadataList = getRecursiveMetadata("testRFC822-ARC");
+        assertEquals(1, metadataList.size());
+        assertEquals("message/rfc822", metadataList.get(0).get(Metadata.CONTENT_TYPE));
+    }
+
+    @Test
     public void testSimpleBodyInlined() throws Exception {
         List<Metadata> metadataList = getRecursiveMetadata("testRFC822_simple_inline_body.txt");
         assertEquals(1, metadataList.size());
@@ -613,4 +624,5 @@ public class RFC822ParserTest extends TikaTest {
         assertEquals(1, metadataList.size());
         assertContains("ssssss", metadataList.get(0).get(TikaCoreProperties.TIKA_CONTENT));
     }
+
 }

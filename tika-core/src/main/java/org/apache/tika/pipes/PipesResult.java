@@ -22,22 +22,28 @@ public class PipesResult {
 
     public enum STATUS {
         CLIENT_UNAVAILABLE_WITHIN_MS,
-        PARSE_EXCEPTION_NO_EMIT,
-        PARSE_EXCEPTION_EMIT, PARSE_SUCCESS,
+        FETCHER_INITIALIZATION_EXCEPTION,
+        FETCH_EXCEPTION,
+        EMPTY_OUTPUT,
+        PARSE_EXCEPTION_NO_EMIT, //within the pipes server
+        PARSE_EXCEPTION_EMIT, //within the pipes server
+        PARSE_SUCCESS, //when passed back to the async processor for emit
+        PARSE_SUCCESS_WITH_EXCEPTION,//when passed back to the async processor for emit
         OOM, TIMEOUT, UNSPECIFIED_CRASH,
         NO_EMITTER_FOUND,
         EMIT_SUCCESS, EMIT_SUCCESS_PARSE_EXCEPTION, EMIT_EXCEPTION,
-        INTERRUPTED_EXCEPTION
+        INTERRUPTED_EXCEPTION, NO_FETCHER_FOUND;
     }
 
-    public static PipesResult CLIENT_UNAVAILABLE_WITHIN_MS =
+    public static final PipesResult CLIENT_UNAVAILABLE_WITHIN_MS =
             new PipesResult(STATUS.CLIENT_UNAVAILABLE_WITHIN_MS);
-    public static PipesResult TIMEOUT = new PipesResult(STATUS.TIMEOUT);
-    public static PipesResult OOM = new PipesResult(STATUS.OOM);
-    public static PipesResult UNSPECIFIED_CRASH = new PipesResult(STATUS.UNSPECIFIED_CRASH);
-    public static PipesResult EMIT_SUCCESS = new PipesResult(STATUS.EMIT_SUCCESS);
-    public static PipesResult NO_EMITTER_FOUND = new PipesResult(STATUS.NO_EMITTER_FOUND);
-    public static PipesResult INTERRUPTED_EXCEPTION = new PipesResult(STATUS.INTERRUPTED_EXCEPTION);
+    public static final PipesResult TIMEOUT = new PipesResult(STATUS.TIMEOUT);
+    public static final PipesResult OOM = new PipesResult(STATUS.OOM);
+    public static final PipesResult UNSPECIFIED_CRASH = new PipesResult(STATUS.UNSPECIFIED_CRASH);
+    public static final PipesResult EMIT_SUCCESS = new PipesResult(STATUS.EMIT_SUCCESS);
+    public static final PipesResult INTERRUPTED_EXCEPTION = new PipesResult(STATUS.INTERRUPTED_EXCEPTION);
+    public static final PipesResult EMPTY_OUTPUT =
+            new PipesResult(STATUS.EMPTY_OUTPUT);
     private final STATUS status;
     private final EmitData emitData;
     private final String message;
@@ -56,8 +62,24 @@ public class PipesResult {
         this(status, null, message);
     }
 
+    /**
+     * This assumes parse success with no parse exception
+     *
+     * @param emitData
+     */
     public PipesResult(EmitData emitData) {
         this(STATUS.PARSE_SUCCESS, emitData, null);
+    }
+
+    /**
+     * This assumes that the message is a stack trace (container
+     * parse exception).
+     *
+     * @param emitData
+     * @param message
+     */
+    public PipesResult(EmitData emitData, String message) {
+        this(STATUS.PARSE_SUCCESS_WITH_EXCEPTION, emitData, message);
     }
 
     public STATUS getStatus() {

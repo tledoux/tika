@@ -62,16 +62,22 @@ public interface TikaCoreProperties {
      * Use this to store parse exception information in the Metadata object.
      */
     String TIKA_META_EXCEPTION_PREFIX = TIKA_META_PREFIX + "EXCEPTION" + NAMESPACE_PREFIX_DELIMITER;
+
+    /**
+     * Use this to store warnings that happened during the parse.
+     */
+    String TIKA_META_WARN_PREFIX = TIKA_META_PREFIX + "WARN" + NAMESPACE_PREFIX_DELIMITER;
+
     //exception in main file
     Property CONTAINER_EXCEPTION =
             Property.internalText(TIKA_META_EXCEPTION_PREFIX + "container_exception");
+
     //exception in an embedded file
     Property EMBEDDED_EXCEPTION =
             Property.internalText(TIKA_META_EXCEPTION_PREFIX + "embedded_exception");
+
     Property WRITE_LIMIT_REACHED =
             Property.internalBoolean(TIKA_META_EXCEPTION_PREFIX + "write_limit_reached");
-    Property EMBEDDED_RESOURCE_LIMIT_REACHED = Property.internalBoolean(
-            TIKA_META_EXCEPTION_PREFIX + "embedded_resource_limit_reached");
     /**
      * Use this to store exceptions caught during a parse that are
      * non-fatal, e.g. if a parser is in lenient mode and more
@@ -80,6 +86,15 @@ public interface TikaCoreProperties {
      */
     Property TIKA_META_EXCEPTION_WARNING =
             Property.internalTextBag(TIKA_META_EXCEPTION_PREFIX + "warn");
+
+    /**
+     * This means that metadata keys or metadata values were truncated.
+     * If there is an "include" filter, this should not be set if
+     * a field is not in the "include" set.
+     */
+    Property TRUNCATED_METADATA =
+            Property.internalBoolean(TIKA_META_WARN_PREFIX + "truncated_metadata");
+
     /**
      * Use this to store exceptions caught while trying to read the
      * stream of an embedded resource.  Do not use this if there is
@@ -88,6 +103,22 @@ public interface TikaCoreProperties {
     Property TIKA_META_EXCEPTION_EMBEDDED_STREAM =
             Property.internalTextBag(TIKA_META_EXCEPTION_PREFIX + "embedded_stream_exception");
     Property TIKA_PARSED_BY = Property.internalTextBag(TIKA_META_PREFIX + "Parsed-By");
+
+    /**
+     * Use this to store a record of all parsers that touched a given file
+     * in the container file's metadata.
+     */
+    Property TIKA_PARSED_BY_FULL_SET = Property.internalTextBag(TIKA_META_PREFIX + "Parsed-By-Full-Set");
+
+    Property TIKA_DETECTED_LANGUAGE = Property.externalTextBag(TIKA_META_PREFIX +
+            "detected_language");
+
+    Property TIKA_DETECTED_LANGUAGE_CONFIDENCE = Property.externalTextBag(TIKA_META_PREFIX +
+            "detected_language_confidence");
+
+    Property TIKA_DETECTED_LANGUAGE_CONFIDENCE_RAW = Property.externalRealSeq(TIKA_META_PREFIX +
+            "detected_language_confidence_raw");
+
     String RESOURCE_NAME_KEY = "resourceName";
     String PROTECTED = "protected";
     String EMBEDDED_RELATIONSHIP_ID = "embeddedRelationshipId";
@@ -246,7 +277,7 @@ public interface TikaCoreProperties {
     Property EMBEDDED_RESOURCE_TYPE = Property.internalClosedChoise(EMBEDDED_RESOURCE_TYPE_KEY,
             EmbeddedResourceType.ATTACHMENT.toString(), EmbeddedResourceType.INLINE.toString(),
             EmbeddedResourceType.METADATA.toString(), EmbeddedResourceType.MACRO.toString(),
-            EmbeddedResourceType.THUMBNAIL.toString());
+            EmbeddedResourceType.THUMBNAIL.toString(), EmbeddedResourceType.RENDERING.toString());
     Property HAS_SIGNATURE = Property.internalBoolean("hasSignature");
 
 
@@ -271,6 +302,7 @@ public interface TikaCoreProperties {
         MACRO, //any code that is intended to be run by the application
         METADATA, //e.g. xmp, xfa
         FONT,//embedded font files
-        THUMBNAIL//TODO: set this in parsers that handle thumbnails
+        THUMBNAIL, //TODO: set this in parsers that handle thumbnails
+        RENDERING //if a file has been rendered
     }
 }

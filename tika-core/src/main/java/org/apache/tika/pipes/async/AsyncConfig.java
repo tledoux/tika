@@ -23,15 +23,17 @@ import java.nio.file.Path;
 
 import org.apache.tika.exception.TikaConfigException;
 import org.apache.tika.pipes.PipesConfigBase;
+import org.apache.tika.pipes.PipesReporter;
 
 public class AsyncConfig extends PipesConfigBase {
 
     private long emitWithinMillis = 10000;
     private long emitMaxEstimatedBytes = 100000;
 
-    private long maxForEmitBatchBytes = 0;
     private int queueSize = 10000;
     private int numEmitters = 1;
+
+    private PipesReporter pipesReporter = PipesReporter.NO_OP_REPORTER;
 
     public static AsyncConfig load(Path p) throws IOException, TikaConfigException {
         AsyncConfig asyncConfig = new AsyncConfig();
@@ -73,22 +75,6 @@ public class AsyncConfig extends PipesConfigBase {
     }
 
 
-    /**
-     *  What is the maximum bytes size per extract that
-     *  will be allowed in the emit queue.  If an extract is too
-     *  big, skip the emit queue and forward it directly from the processor.  If
-     *  set to <code>0</code>, this will never send an extract back for batch emitting,
-     *  but will emit the extract directly from the processor.
-     * @return
-     */
-    public long getMaxForEmitBatchBytes() {
-        return maxForEmitBatchBytes;
-    }
-
-    public void setMaxForEmitBatchBytes(long maxForEmitBatchBytes) {
-        this.maxForEmitBatchBytes = maxForEmitBatchBytes;
-    }
-
     public void setNumEmitters(int numEmitters) {
         this.numEmitters = numEmitters;
     }
@@ -112,5 +98,13 @@ public class AsyncConfig extends PipesConfigBase {
      */
     public int getNumEmitters() {
         return numEmitters;
+    }
+
+    public PipesReporter getPipesReporter() {
+        return pipesReporter;
+    }
+
+    public void setPipesReporter(PipesReporter pipesReporter) {
+        this.pipesReporter = pipesReporter;
     }
 }
