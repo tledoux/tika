@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.IOExceptionWithCause;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -93,7 +94,7 @@ public class PDFBoxRenderer implements PDDocumentRenderer, Initializable {
         if (tis.getOpenContainer() != null) {
             pdDocument = (PDDocument) tis.getOpenContainer();
         } else {
-            pdDocument = PDDocument.load(is);
+            pdDocument = Loader.loadPDF(is);
             mustClose = true;
         }
         PageBasedRenderResults results = new PageBasedRenderResults(new TemporaryResources());

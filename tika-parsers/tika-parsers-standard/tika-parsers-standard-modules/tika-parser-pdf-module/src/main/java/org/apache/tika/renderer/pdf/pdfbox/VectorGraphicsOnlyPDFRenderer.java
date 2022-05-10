@@ -103,31 +103,19 @@ public class VectorGraphicsOnlyPDFRenderer extends PDFRenderer {
         }
 
         @Override
-        protected void applyTextAdjustment(float tx, float ty) throws IOException {
+        protected void applyTextAdjustment(float tx, float ty) {
         }
 
         @Override
         protected void showText(byte[] string) throws IOException {
         }
 
-        @Override
-        protected void showGlyph(Matrix textRenderingMatrix, PDFont font, int code, String unicode,
-                                 Vector displacement) throws IOException {
-        }
+
 
         @Override
         protected void showGlyph(Matrix textRenderingMatrix, PDFont font, int code,
                                  Vector displacement) throws IOException {
         }
 
-        @Override
-        protected void showFontGlyph(Matrix textRenderingMatrix, PDFont font, int code,
-                                     String unicode, Vector displacement) throws IOException {
-        }
-
-        @Override
-        protected void showType3Glyph(Matrix textRenderingMatrix, PDType3Font font, int code,
-                                      String unicode, Vector displacement) throws IOException {
-        }
     }
 }

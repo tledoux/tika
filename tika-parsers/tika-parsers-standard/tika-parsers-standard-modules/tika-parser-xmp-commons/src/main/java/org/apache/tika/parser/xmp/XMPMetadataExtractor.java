@@ -25,9 +25,11 @@ import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.xmpbox.XMPMetadata;
 import org.apache.xmpbox.schema.DublinCoreSchema;
 import org.apache.xmpbox.schema.XMPBasicSchema;
+import org.apache.xmpbox.type.BadFieldValueException;
 import org.apache.xmpbox.xml.DomXmpParser;
 
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.extractor.EmbeddedDocumentUtil;
 import org.apache.tika.metadata.DublinCore;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.Property;
@@ -50,9 +52,11 @@ public class XMPMetadataExtractor {
         XMPMetadata xmp;
         try {
             DomXmpParser xmpParser = new DomXmpParser();
-            xmpParser.setStrictParsing(false);
+            //TODO: turn this back on once the bug is fixed PDFBOX-5431
+            //xmpParser.setStrictParsing(false);
             xmp = xmpParser.parse(new CloseShieldInputStream(stream));
         } catch (Throwable ex) {
+            EmbeddedDocumentUtil.recordException(ex, metadata);
             //swallow
             return;
         }
@@ -75,13 +79,24 @@ public class XMPMetadataExtractor {
         try {
             schemaDublinCore = xmp.getDublinCoreSchema();
         } catch (Throwable e) {
+            EmbeddedDocumentUtil.recordException(e, metadata);
             // Swallow
             return;
         }
         if (schemaDublinCore != null) {
-            addMetadata(metadata, DublinCore.TITLE, schemaDublinCore.getTitle());
+            try {
+                addMetadata(metadata, DublinCore.TITLE, schemaDublinCore.getTitle());
+            } catch (BadFieldValueException e) {
+                EmbeddedDocumentUtil.recordException(e, metadata);
+                //TODO: something
+            }
+            try {
+                addMetadata(metadata, DublinCore.DESCRIPTION, schemaDublinCore.getDescription());
+            } catch (BadFieldValueException e) {
+                EmbeddedDocumentUtil.recordException(e, metadata);
+                //TODO: something
+            }
             addMetadata(metadata, DublinCore.FORMAT, schemaDublinCore.getFormat());
-            addMetadata(metadata, DublinCore.DESCRIPTION, schemaDublinCore.getDescription());
             addMetadata(metadata, DublinCore.CREATOR, schemaDublinCore.getCreators());
             addMetadata(metadata, DublinCore.SUBJECT, schemaDublinCore.getSubjects());
         }
@@ -102,6 +117,7 @@ public class XMPMetadataExtractor {
         try {
             schemaBasic = xmp.getXMPBasicSchema();
         } catch (Throwable e) {
+            EmbeddedDocumentUtil.recordException(e, metadata);
             // Swallow
             return;
         }
